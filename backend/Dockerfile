@@ -49,4 +49,4 @@ EXPOSE 3000
 
 # dumb-init handles PID 1 + signal forwarding
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/src/main.js"]
+CMD ["sh", "-c", "npx prisma db push && node dist/src/main.js"]
