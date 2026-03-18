@@ -1,0 +1,9 @@
+node_modules/
+
+# Environment variables — keep all .env* out except .env.example
+.env
+.env.local
+.env.*.local
+!.env.example
+
+/generated/prisma

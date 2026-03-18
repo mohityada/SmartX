@@ -1,0 +1,209 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── 1. USERS ────────────────────────────────────────────────────────
+model User {
+  id            String   @id @default(uuid()) @db.Uuid
+  email         String   @unique @db.VarChar(255)
+  passwordHash  String   @map("password_hash") @db.VarChar(255)
+  displayName   String   @map("display_name") @db.VarChar(100)
+  avatarUrl     String?  @map("avatar_url")
+  emailVerified Boolean  @default(false) @map("email_verified")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  xAccounts    XAccount[]
+  bots         Bot[]
+  subscription Subscription?
+
+  @@map("users")
+}
+
+// ─── 2. X (TWITTER) ACCOUNTS ────────────────────────────────────────
+model XAccount {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  xUserId         String    @unique @map("x_user_id") @db.VarChar(100)
+  xUsername        String    @map("x_username") @db.VarChar(100)
+  accessTokenEnc  String    @map("access_token_enc")
+  refreshTokenEnc String    @map("refresh_token_enc")
+  tokenExpiresAt  DateTime? @map("token_expires_at") @db.Timestamptz()
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bots Bot[]
+
+  @@index([userId])
+  @@map("x_accounts")
+}
+
+// ─── 3. SUBSCRIPTION PLANS ──────────────────────────────────────────
+model SubscriptionPlan {
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String   @unique @db.VarChar(50)
+  maxBots         Int      @map("max_bots")
+  maxTweetsPerDay Int      @map("max_tweets_per_day")
+  priceCents      Int      @map("price_cents")
+  stripePriceId   String?  @map("stripe_price_id") @db.VarChar(255)
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+// ─── 4. SUBSCRIPTIONS ───────────────────────────────────────────────
+model Subscription {
+  id                   String   @id @default(uuid()) @db.Uuid
+  userId               String   @unique @map("user_id") @db.Uuid
+  planId               String   @map("plan_id") @db.Uuid
+  stripeSubscriptionId String?  @map("stripe_subscription_id") @db.VarChar(255)
+  status               String   @db.VarChar(20)
+  currentPeriodStart   DateTime @map("current_period_start") @db.Timestamptz()
+  currentPeriodEnd     DateTime @map("current_period_end") @db.Timestamptz()
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  user User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@map("subscriptions")
+}
+
+// ─── 5. BOTS ────────────────────────────────────────────────────────
+model Bot {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  xAccountId       String?  @map("x_account_id") @db.Uuid
+  name             String   @db.VarChar(100)
+  persona          String?
+  tone             String   @default("neutral") @db.VarChar(50)
+  language         String   @default("en") @db.VarChar(10)
+  postingFrequency Int      @default(4) @map("posting_frequency")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  xAccount           XAccount?               @relation(fields: [xAccountId], references: [id], onDelete: SetNull)
+  topics             BotTopic[]
+  eventSubscriptions BotEventSubscription[]
+  tweets             Tweet[]
+  activityLogs       BotActivityLog[]
+
+  @@index([userId])
+  @@index([isActive])
+  @@map("bots")
+}
+
+// ─── 6. BOT TOPICS ──────────────────────────────────────────────────
+model BotTopic {
+  id        String   @id @default(uuid()) @db.Uuid
+  botId     String   @map("bot_id") @db.Uuid
+  topic     String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@unique([botId, topic])
+  @@map("bot_topics")
+}
+
+// ─── 7. EVENTS ──────────────────────────────────────────────────────
+model Event {
+  id          String   @id @default(uuid()) @db.Uuid
+  source      String   @db.VarChar(50)
+  category    String   @db.VarChar(50)
+  title       String   @db.VarChar(500)
+  description String?
+  sourceUrl   String?  @map("source_url")
+  externalId  String?  @map("external_id") @db.VarChar(255)
+  occurredAt  DateTime @map("occurred_at") @db.Timestamptz()
+  ingestedAt  DateTime @default(now()) @map("ingested_at") @db.Timestamptz()
+
+  tweets Tweet[]
+
+  @@unique([source, externalId])
+  @@index([category, occurredAt(sort: Desc)])
+  @@index([ingestedAt(sort: Desc)])
+  @@map("events")
+}
+
+// ─── 8. BOT EVENT SUBSCRIPTIONS ─────────────────────────────────────
+model BotEventSubscription {
+  id        String   @id @default(uuid()) @db.Uuid
+  botId     String   @map("bot_id") @db.Uuid
+  source    String   @db.VarChar(50)
+  category  String   @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@unique([botId, source, category])
+  @@index([source, category])
+  @@map("bot_event_subscriptions")
+}
+
+// ─── 9. TWEETS ──────────────────────────────────────────────────────
+model Tweet {
+  id            String    @id @default(uuid()) @db.Uuid
+  botId         String    @map("bot_id") @db.Uuid
+  eventId       String?   @map("event_id") @db.Uuid
+  content       String    @db.VarChar(280)
+  status        String    @default("draft") @db.VarChar(20)
+  xTweetId      String?   @map("x_tweet_id") @db.VarChar(100)
+  postedAt      DateTime? @map("posted_at") @db.Timestamptz()
+  errorMessage  String?   @map("error_message")
+  impressions   Int       @default(0)
+  likes         Int       @default(0)
+  retweets      Int       @default(0)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  bot            Bot             @relation(fields: [botId], references: [id], onDelete: Cascade)
+  event          Event?          @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  scheduledTweet ScheduledTweet?
+
+  @@index([botId, status])
+  @@index([postedAt(sort: Desc)])
+  @@map("tweets")
+}
+
+// ─── 10. SCHEDULED TWEETS ───────────────────────────────────────────
+model ScheduledTweet {
+  id              String    @id @default(uuid()) @db.Uuid
+  tweetId         String    @unique @map("tweet_id") @db.Uuid
+  scheduledFor    DateTime  @map("scheduled_for") @db.Timestamptz()
+  jobId           String?   @map("job_id") @db.VarChar(255)
+  status          String    @default("pending") @db.VarChar(20)
+  attempts        Int       @default(0)
+  lastAttemptedAt DateTime? @map("last_attempted_at") @db.Timestamptz()
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  tweet Tweet @relation(fields: [tweetId], references: [id], onDelete: Cascade)
+
+  @@index([scheduledFor])
+  @@map("scheduled_tweets")
+}
+
+// ─── 11. BOT ACTIVITY LOGS ─────────────────────────────────────────
+model BotActivityLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  botId     String   @map("bot_id") @db.Uuid
+  action    String   @db.VarChar(50)
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@index([botId, createdAt(sort: Desc)])
+  @@map("bot_activity_logs")
+}
