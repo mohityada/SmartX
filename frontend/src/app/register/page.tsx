@@ -115,6 +115,15 @@ export default function RegisterPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3">
+            <p className="text-center text-base text-muted-foreground">
+              Want to learn more?{" "}
+              <Link
+                href="/guide"
+                className="font-semibold text-primary underline-offset-4 hover:underline"
+              >
+                Read the Platform Guide
+              </Link>
+            </p>
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create account
@@ -131,15 +140,6 @@ export default function RegisterPage() {
           </CardFooter>
         </form>
       </Card>
-      <p className="mt-4 text-center text-sm text-muted-foreground">
-        Want to learn more?{" "}
-        <Link
-          href="/guide"
-          className="font-medium text-primary underline-offset-4 hover:underline"
-        >
-          Read the Platform Guide
-        </Link>
-      </p>
     </div>
   );
 }
