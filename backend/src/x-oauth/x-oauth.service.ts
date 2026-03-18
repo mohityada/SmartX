@@ -10,7 +10,6 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../common/prisma';
 import { TokenCryptoService } from '../posting/token-crypto.service';
 
-const OAUTH_STATE_PREFIX = 'x_oauth_state:';
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 interface OAuthState {
@@ -120,9 +119,7 @@ export class XOAuthService {
     const xUser = await this.fetchXUserInfo(tokenResponse.access_token);
 
     // Encrypt tokens
-    const accessTokenEnc = this.tokenCrypto.encrypt(
-      tokenResponse.access_token,
-    );
+    const accessTokenEnc = this.tokenCrypto.encrypt(tokenResponse.access_token);
     const refreshTokenEnc = this.tokenCrypto.encrypt(
       tokenResponse.refresh_token,
     );
@@ -268,7 +265,9 @@ export class XOAuthService {
 
     if (!response.ok) {
       const errorBody = await response.text();
-      this.logger.error(`Token exchange failed: ${response.status} ${errorBody}`);
+      this.logger.error(
+        `Token exchange failed: ${response.status} ${errorBody}`,
+      );
       throw new UnauthorizedException(
         'Failed to exchange authorization code. Please try again.',
       );
@@ -289,7 +288,9 @@ export class XOAuthService {
 
     if (!response.ok) {
       const errorBody = await response.text();
-      this.logger.error(`User info fetch failed: ${response.status} ${errorBody}`);
+      this.logger.error(
+        `User info fetch failed: ${response.status} ${errorBody}`,
+      );
       throw new UnauthorizedException(
         'Failed to retrieve X account information.',
       );

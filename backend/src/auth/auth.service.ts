@@ -58,7 +58,7 @@ export class AuthService {
     return { id: user.id, email: user.email };
   }
 
-  async login(user: { id: string; email: string }): Promise<AuthTokensDto> {
+  login(user: { id: string; email: string }): Promise<AuthTokensDto> {
     return this.generateTokens(user.id, user.email);
   }
 
@@ -100,9 +100,7 @@ export class AuthService {
       const [salt, key] = hash.split(':');
       crypto.scrypt(password, salt, 64, (err, derivedKey) => {
         if (err) reject(err);
-        resolve(
-          crypto.timingSafeEqual(Buffer.from(key, 'hex'), derivedKey),
-        );
+        resolve(crypto.timingSafeEqual(Buffer.from(key, 'hex'), derivedKey));
       });
     });
   }

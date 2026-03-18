@@ -76,8 +76,8 @@ jobs:
       DATABASE_URL: postgresql://smartx:test@localhost:5432/smartx_test
       REDIS_HOST: localhost
       REDIS_PORT: 6379
-      JWT_SECRET: ci-test-secret
-      TOKEN_ENCRYPTION_KEY: ci-test-encryption-key-32ch!!
+      JWT_SECRET: ci-test-secret-for-github-actions-only
+      TOKEN_ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

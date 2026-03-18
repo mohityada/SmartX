@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { QueueEvents } from 'bullmq';
 import { QUEUES, QueueName } from './queue.constants';
@@ -15,7 +20,7 @@ export class QueueEventsListener implements OnModuleInit, OnModuleDestroy {
 
   constructor(private readonly configService: ConfigService) {}
 
-  async onModuleInit() {
+  onModuleInit() {
     const connection = {
       host: this.configService.get<string>('redis.host')!,
       port: this.configService.get<number>('redis.port')!,
@@ -41,9 +46,7 @@ export class QueueEventsListener implements OnModuleInit, OnModuleDestroy {
       });
 
       queueEvents.on('delayed', ({ jobId, delay }) => {
-        this.logger.debug(
-          `[${queueName}] Job ${jobId} delayed by ${delay}ms`,
-        );
+        this.logger.debug(`[${queueName}] Job ${jobId} delayed by ${delay}ms`);
       });
 
       this.listeners.push(queueEvents);
