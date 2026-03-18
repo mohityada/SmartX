@@ -94,6 +94,15 @@ export default function LoginPage() {
           </CardFooter>
         </form>
       </Card>
+      <p className="mt-4 text-center text-sm text-muted-foreground">
+        New here?{" "}
+        <Link
+          href="/guide"
+          className="font-medium text-primary underline-offset-4 hover:underline"
+        >
+          Read the Platform Guide
+        </Link>
+      </p>
     </div>
   );
 }
