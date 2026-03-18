@@ -22,7 +22,8 @@ export class PostingRateLimiter {
   constructor(private readonly configService: ConfigService) {
     const host = this.configService.get<string>('redis.host')!;
     const port = this.configService.get<number>('redis.port')!;
-    this.redis = new Redis({ host, port, lazyConnect: true });
+    const password = this.configService.get<string>('redis.password');
+    this.redis = new Redis({ host, port, password, lazyConnect: true });
     this.redis.connect().catch((err) => {
       this.logger.error('Redis connection failed for rate limiter', err);
     });

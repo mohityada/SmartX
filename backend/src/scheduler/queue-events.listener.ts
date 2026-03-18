@@ -24,6 +24,7 @@ export class QueueEventsListener implements OnModuleInit, OnModuleDestroy {
     const connection = {
       host: this.configService.get<string>('redis.host')!,
       port: this.configService.get<number>('redis.port')!,
+      password: this.configService.get<string>('redis.password'),
     };
 
     for (const queueName of Object.values(QUEUES)) {

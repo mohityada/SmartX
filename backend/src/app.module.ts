@@ -43,6 +43,7 @@ import { XOAuthModule } from './x-oauth/x-oauth.module';
         connection: {
           host: config.get<string>('redis.host'),
           port: config.get<number>('redis.port'),
+          password: config.get<string>('redis.password'),
         },
       }),
     }),

@@ -38,6 +38,7 @@ COPY --from=builder --chown=smartx:smartx /app/dist ./dist
 COPY --from=builder --chown=smartx:smartx /app/node_modules ./node_modules
 COPY --from=builder --chown=smartx:smartx /app/package.json ./
 COPY --from=builder --chown=smartx:smartx /app/prisma ./prisma
+COPY --from=builder --chown=smartx:smartx /app/prisma.config.ts ./
 
 USER smartx
 
@@ -48,4 +49,4 @@ EXPOSE 3000
 
 # dumb-init handles PID 1 + signal forwarding
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/src/main.js"]
+CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/src/main.js"]
