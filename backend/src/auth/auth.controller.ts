@@ -48,7 +48,7 @@ export class AuthController {
   login(
     @Request() req: { user: { id: string; email: string } },
     @Body() _dto: LoginDto,
-  ): Promise<AuthTokensDto> {
+  ): AuthTokensDto {
     return this.authService.login(req.user);
   }
 

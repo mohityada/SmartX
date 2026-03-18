@@ -58,7 +58,7 @@ export class AuthService {
     return { id: user.id, email: user.email };
   }
 
-  login(user: { id: string; email: string }): Promise<AuthTokensDto> {
+  login(user: { id: string; email: string }): AuthTokensDto {
     return this.generateTokens(user.id, user.email);
   }
 
