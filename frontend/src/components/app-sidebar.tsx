@@ -11,6 +11,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  BookOpen,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/bots", label: "Bots", icon: Bot },
   { href: "/dashboard/tweets", label: "Tweets", icon: Twitter },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/guide", label: "Guide", icon: BookOpen },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
@@ -83,7 +85,7 @@ export function AppSidebar() {
           const isActive =
             href === "/dashboard"
               ? pathname === "/dashboard"
-              : pathname.startsWith(href);
+              : pathname === href || pathname.startsWith(href + "/");
 
           const link = (
             <Link
