@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useBot, useUpdateBot, useToggleBot, useBotActivity } from "@/hooks/use-bots";
 import { useXAccounts } from "@/hooks/use-x-accounts";
+import type { Bot, BotActivityLog, XAccountWithCount } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,37 +42,27 @@ const TONE_OPTIONS = [
   "inspirational",
 ];
 
-export default function BotDetailPage() {
-  const params = useParams();
+function BotEditForm({
+  bot,
+  activityLogs,
+  xAccounts,
+}: {
+  bot: Bot;
+  activityLogs?: BotActivityLog[];
+  xAccounts?: XAccountWithCount[];
+}) {
   const router = useRouter();
-  const botId = params.id as string;
-
-  const { data: bot, isLoading } = useBot(botId);
-  const { data: activityLogs } = useBotActivity(botId);
-  const updateBot = useUpdateBot(botId);
+  const updateBot = useUpdateBot(bot.id);
   const toggleBot = useToggleBot();
-  const { data: xAccounts } = useXAccounts();
 
-  const [name, setName] = useState("");
-  const [persona, setPersona] = useState("");
-  const [tone, setTone] = useState("neutral");
-  const [language, setLanguage] = useState("en");
-  const [postingFrequency, setPostingFrequency] = useState(4);
+  const [name, setName] = useState(bot.name);
+  const [persona, setPersona] = useState(bot.persona ?? "");
+  const [tone, setTone] = useState(bot.tone);
+  const [language, setLanguage] = useState(bot.language);
+  const [postingFrequency, setPostingFrequency] = useState(bot.postingFrequency);
   const [topicInput, setTopicInput] = useState("");
-  const [topics, setTopics] = useState<string[]>([]);
-  const [xAccountId, setXAccountId] = useState<string>("");
-
-  useEffect(() => {
-    if (bot) {
-      setName(bot.name);
-      setPersona(bot.persona ?? "");
-      setTone(bot.tone);
-      setLanguage(bot.language);
-      setPostingFrequency(bot.postingFrequency);
-      setTopics(bot.topics.map((t) => t.topic));
-      setXAccountId(bot.xAccountId ?? "");
-    }
-  }, [bot]);
+  const [topics, setTopics] = useState<string[]>(bot.topics.map((t) => t.topic));
+  const [xAccountId, setXAccountId] = useState<string>(bot.xAccountId ?? "");
 
   function addTopic() {
     const trimmed = topicInput.trim();
@@ -100,26 +91,6 @@ export default function BotDetailPage() {
       {
         onSuccess: () => toast.success("Bot updated"),
       },
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="mx-auto max-w-3xl space-y-6">
-        <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  }
-
-  if (!bot) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-lg text-muted-foreground">Bot not found</p>
-        <Button variant="outline" className="mt-4" render={<Link href="/dashboard/bots" />}>
-          Back to Bots
-        </Button>
-      </div>
     );
   }
 
@@ -398,5 +369,43 @@ export default function BotDetailPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function BotDetailPage() {
+  const params = useParams();
+  const botId = params.id as string;
+
+  const { data: bot, isLoading } = useBot(botId);
+  const { data: activityLogs } = useBotActivity(botId);
+  const { data: xAccounts } = useXAccounts();
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6">
+        <Skeleton className="h-10 w-48" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (!bot) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <p className="text-lg text-muted-foreground">Bot not found</p>
+        <Button variant="outline" className="mt-4" render={<Link href="/dashboard/bots" />}>
+          Back to Bots
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <BotEditForm
+      key={bot.id}
+      bot={bot}
+      activityLogs={activityLogs}
+      xAccounts={xAccounts}
+    />
   );
 }

@@ -35,7 +35,6 @@ import {
 } from "recharts";
 import { Eye, Heart, Repeat2, MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import type { TweetStatus } from "@/types";
 
 const PIE_COLORS = [
   "hsl(var(--chart-1))",

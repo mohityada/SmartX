@@ -15,19 +15,19 @@ The Minimum Viable Product enables a user to **sign up, connect their X account,
 | AI tweet generation (Claude) | ✅ Done | Content filtering included |
 | Tweet scheduling & posting | ✅ Done | Rate limiting, retries |
 | Tweet approval workflow | ✅ Done | |
-| **X OAuth authorization flow** | ❌ Missing | **Critical blocker** |
-| **X account linking UI** | ❌ Missing | Users can't connect X |
+| X OAuth authorization flow | ✅ Done | PKCE flow, token encryption |
+| X account linking UI | ✅ Done | Connect/disconnect in settings |
 | Health checks & monitoring | ✅ Done | 3 probe endpoints |
 | Docker + CI/CD | ✅ Done | |
 
 ### P1 — Required for Public Launch
-| Feature | Notes |
-|---|---|
-| Email verification | `emailVerified` field exists, needs flow |
-| Password reset | Forgot password → email → reset |
-| Tweet metrics sync | Cron job to pull engagement from X API |
-| API rate limiting | Per-user/IP throttling |
-| Subscription enforcement | Enforce max bots/tweets per plan |
+| Feature | Status | Notes |
+|---|---|---|
+| Email verification | ❌ Missing | `emailVerified` field exists, needs flow |
+| Password reset | ❌ Missing | Forgot password → email → reset |
+| Tweet metrics sync | ❌ Missing | DB fields ready, needs cron job |
+| API rate limiting | ✅ Done | Per-bot daily limits, Redis sliding window |
+| Subscription enforcement | ⚠️ Partial | maxTweetsPerDay enforced, maxBots not yet |
 
 ### P2 — Growth Features (Post-Launch)
 | Feature | Notes |
@@ -44,30 +44,30 @@ The Minimum Viable Product enables a user to **sign up, connect their X account,
 
 ## Sprint Roadmap
 
-### Week 1 — X OAuth & Account Linking (P0 Blocker)
+### Week 1 — X OAuth & Account Linking ✅ COMPLETE
 
 **Goal**: Users can connect their X account and bots can post.
 
 **Backend tasks:**
-- [ ] `GET /auth/x/authorize` — Redirect to X OAuth2 authorization screen
+- [x] `GET /auth/x/authorize` — Redirect to X OAuth2 authorization screen
   - Generate PKCE code challenge
   - Store state + code_verifier in session/Redis
   - Redirect to `https://twitter.com/i/oauth2/authorize`
-- [ ] `GET /auth/x/callback` — Handle OAuth callback
+- [x] `GET /auth/x/callback` — Handle OAuth callback
   - Exchange code for access + refresh tokens
   - Encrypt tokens via existing `TokenCryptoService`
   - Create/update `XAccount` record linked to user
   - Redirect to frontend success page
-- [ ] `GET /users/me/x-accounts` — List user's connected X accounts
-- [ ] `DELETE /users/me/x-accounts/:id` — Disconnect an X account
-- [ ] `PATCH /bots/:id` — Allow setting `xAccountId` on a bot
+- [x] `GET /users/me/x-accounts` — List user's connected X accounts
+- [x] `DELETE /users/me/x-accounts/:id` — Disconnect an X account
+- [x] `PATCH /bots/:id` — Allow setting `xAccountId` on a bot
 
 **Frontend tasks:**
-- [ ] "Connect X Account" button → redirects to backend OAuth URL
-- [ ] `/auth/x/callback` page — handles redirect, shows success/error
-- [ ] X accounts list in Settings page
-- [ ] Bot edit form: select X account dropdown
-- [ ] Connection status indicators on bot cards
+- [x] "Connect X Account" button → redirects to backend OAuth URL
+- [x] `/auth/x/callback` page — handles redirect, shows success/error
+- [x] X accounts list in Settings page
+- [x] Bot edit form: select X account dropdown
+- [x] Connection status indicators on bot cards
 
 **Deliverable**: End-to-end flow from account connection to first published tweet.
 
@@ -168,13 +168,13 @@ The Minimum Viable Product enables a user to **sign up, connect their X account,
 
 ```
 Feature Pipeline:
-  [Register] → [Login] → [Connect X??] → [Create Bot] → [Events Ingested]
-                                ⬆                             ⬇
-                          BLOCKED HERE              [AI Generates Tweets]
-                                                          ⬇
-                                                    [Scheduled]
-                                                          ⬇
-                                                    [Posted to X]
+  [Register] → [Login] → [Connect X ✅] → [Create Bot] → [Events Ingested]
+                                                              ⬇
+                                                    [AI Generates Tweets]
+                                                              ⬇
+                                                        [Scheduled]
+                                                              ⬇
+                                                      [Posted to X ✅]
 ```
 
-**Bottom line**: The core pipeline (events → AI → schedule → post) is fully built. The single critical blocker is X OAuth authorization — once that's implemented, the platform delivers its core value proposition.
+**Bottom line**: The core MVP pipeline is fully operational — users can register, connect their X account via OAuth, create bots, and have tweets automatically generated and posted. Remaining work is P1/P2 features (email verification, metrics cron, Stripe billing).
