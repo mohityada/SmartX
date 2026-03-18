@@ -42,7 +42,11 @@ export function classifyTwitterError(error: unknown): {
     // 429 Too Many Requests — rate limited, retryable after delay
     if (statusCode === 429) {
       const retryAfter = getRetryAfterMs(error);
-      return { retryable: true, message: `Rate limited (429)`, retryAfterMs: retryAfter };
+      return {
+        retryable: true,
+        message: `Rate limited (429)`,
+        retryAfterMs: retryAfter,
+      };
     }
 
     // 5xx Server errors — retryable
@@ -52,7 +56,10 @@ export function classifyTwitterError(error: unknown): {
 
     // 401 Unauthorized — token might be stale but refresh already attempted
     if (statusCode === 401) {
-      return { retryable: true, message: 'Unauthorized — token may need refresh' };
+      return {
+        retryable: true,
+        message: 'Unauthorized — token may need refresh',
+      };
     }
 
     // 403 Forbidden — account suspended, app permission issue — not retryable
@@ -72,7 +79,12 @@ export function classifyTwitterError(error: unknown): {
   }
 
   // Check for known duplicate tweet error messages
-  if (message.includes('duplicate') || message.includes('You are not allowed to create a Tweet with duplicate content')) {
+  if (
+    message.includes('duplicate') ||
+    message.includes(
+      'You are not allowed to create a Tweet with duplicate content',
+    )
+  ) {
     return { retryable: false, message: `Duplicate tweet: ${message}` };
   }
 
@@ -93,15 +105,24 @@ export function classifyTwitterError(error: unknown): {
 function getStatusCode(error: unknown): number | undefined {
   if (error && typeof error === 'object') {
     // twitter-api-v2 ApiResponseError
-    if ('code' in error && typeof (error as Record<string, unknown>).code === 'number') {
+    if (
+      'code' in error &&
+      typeof (error as Record<string, unknown>).code === 'number'
+    ) {
       return (error as Record<string, unknown>).code as number;
     }
     // Fallback: statusCode property
-    if ('statusCode' in error && typeof (error as Record<string, unknown>).statusCode === 'number') {
+    if (
+      'statusCode' in error &&
+      typeof (error as Record<string, unknown>).statusCode === 'number'
+    ) {
       return (error as Record<string, unknown>).statusCode as number;
     }
     // Fallback: status property
-    if ('status' in error && typeof (error as Record<string, unknown>).status === 'number') {
+    if (
+      'status' in error &&
+      typeof (error as Record<string, unknown>).status === 'number'
+    ) {
       return (error as Record<string, unknown>).status as number;
     }
   }

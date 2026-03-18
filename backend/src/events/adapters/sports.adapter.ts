@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  EventSourceAdapter,
-  NormalizedEvent,
-} from './event-source.adapter';
+import { EventSourceAdapter, NormalizedEvent } from './event-source.adapter';
 
 interface SportsDbEvent {
   idEvent: string;
@@ -74,11 +71,15 @@ export class SportsAdapter implements EventSourceAdapter {
       }
     }
 
-    this.logger.log(`Fetched ${results.length} sports events from ${this.leagueIds.length} leagues`);
+    this.logger.log(
+      `Fetched ${results.length} sports events from ${this.leagueIds.length} leagues`,
+    );
     return results;
   }
 
-  private async fetchLeagueEvents(leagueId: string): Promise<NormalizedEvent[]> {
+  private async fetchLeagueEvents(
+    leagueId: string,
+  ): Promise<NormalizedEvent[]> {
     const url = `${this.baseUrl}/eventspastleague.php?id=${encodeURIComponent(leagueId)}`;
 
     const response = await fetch(url, {
@@ -87,7 +88,9 @@ export class SportsAdapter implements EventSourceAdapter {
     });
 
     if (!response.ok) {
-      this.logger.warn(`TheSportsDB returned ${response.status} for league ${leagueId}`);
+      this.logger.warn(
+        `TheSportsDB returned ${response.status} for league ${leagueId}`,
+      );
       return [];
     }
 

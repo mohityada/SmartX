@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  EventSourceAdapter,
-  NormalizedEvent,
-} from './event-source.adapter';
+import { EventSourceAdapter, NormalizedEvent } from './event-source.adapter';
 
 /**
  * Fetches and parses RSS/Atom feeds configured via RSS_FEED_URLS env var.
@@ -49,13 +46,18 @@ export class RssAdapter implements EventSourceAdapter {
       }
     }
 
-    this.logger.log(`Parsed ${results.length} items from ${this.feedUrls.length} RSS feeds`);
+    this.logger.log(
+      `Parsed ${results.length} items from ${this.feedUrls.length} RSS feeds`,
+    );
     return results;
   }
 
   private async parseFeed(feedUrl: string): Promise<NormalizedEvent[]> {
     const response = await fetch(feedUrl, {
-      headers: { Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml' },
+      headers: {
+        Accept:
+          'application/rss+xml, application/atom+xml, application/xml, text/xml',
+      },
       signal: AbortSignal.timeout(10_000),
     });
 
@@ -95,9 +97,7 @@ export class RssAdapter implements EventSourceAdapter {
         this.extractTag(item, 'published') ??
         this.extractTag(item, 'updated');
       const guid =
-        this.extractTag(item, 'guid') ??
-        this.extractTag(item, 'id') ??
-        link;
+        this.extractTag(item, 'guid') ?? this.extractTag(item, 'id') ?? link;
 
       if (!guid) continue;
 
@@ -141,15 +141,28 @@ export class RssAdapter implements EventSourceAdapter {
   }
 
   private stripHtml(html: string): string {
-    return html.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+    return html
+      .replace(/<[^>]*>/g, '')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .trim();
   }
 
   private categorizeFromUrl(feedUrl: string): string {
     const lower = feedUrl.toLowerCase();
-    if (lower.includes('cricket') || lower.includes('ipl') || lower.includes('espncricinfo')) return 'cricket';
+    if (
+      lower.includes('cricket') ||
+      lower.includes('ipl') ||
+      lower.includes('espncricinfo')
+    )
+      return 'cricket';
     if (lower.includes('sport')) return 'sports';
     if (lower.includes('tech')) return 'technology';
-    if (lower.includes('business') || lower.includes('finance')) return 'business';
+    if (lower.includes('business') || lower.includes('finance'))
+      return 'business';
     if (lower.includes('entertainment')) return 'entertainment';
     if (lower.includes('science')) return 'science';
     return 'general';

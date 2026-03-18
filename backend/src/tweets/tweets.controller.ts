@@ -18,10 +18,7 @@ export class TweetsController {
   constructor(private readonly tweetsService: TweetsService) {}
 
   @Get()
-  findAll(
-    @CurrentUser('id') userId: string,
-    @Query() filters: TweetFilterDto,
-  ) {
+  findAll(@CurrentUser('id') userId: string, @Query() filters: TweetFilterDto) {
     return this.tweetsService.findAllByUser(userId, filters);
   }
 

@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import { PrismaService } from '../common/prisma';
-import { TweetPromptBuilder, PromptParams } from './prompts/tweet-prompt.builder';
+import {
+  TweetPromptBuilder,
+  PromptParams,
+} from './prompts/tweet-prompt.builder';
 import { ContentFilterService } from './content-filter.service';
 
 const MAX_GENERATION_RETRIES = 3;
@@ -94,7 +97,12 @@ export class AiGenerationService {
       const candidate = filterResult.sanitized ?? raw;
 
       // Duplicate check against recent tweets
-      if (this.isTooSimilar(candidate, recentTweets.map((t) => t.content))) {
+      if (
+        this.isTooSimilar(
+          candidate,
+          recentTweets.map((t) => t.content),
+        )
+      ) {
         this.logger.warn(
           `Attempt ${attempt}: generated tweet too similar to a recent tweet`,
         );
@@ -191,7 +199,10 @@ export class AiGenerationService {
 
     for (const recent of recentTexts) {
       const recentBigrams = this.getBigrams(recent);
-      const similarity = this.jaccardSimilarity(candidateBigrams, recentBigrams);
+      const similarity = this.jaccardSimilarity(
+        candidateBigrams,
+        recentBigrams,
+      );
       if (similarity >= SIMILARITY_THRESHOLD) {
         return true;
       }

@@ -77,7 +77,9 @@ export class QueueAdminController {
 
   @Post('scheduler/run-now')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Immediately run auto-scheduler for all active bots' })
+  @ApiOperation({
+    summary: 'Immediately run auto-scheduler for all active bots',
+  })
   async runSchedulerNow() {
     await this.scheduler.autoScheduleAll();
     return { triggered: true };

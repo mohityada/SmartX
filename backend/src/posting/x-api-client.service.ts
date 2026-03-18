@@ -39,7 +39,10 @@ export class XApiClientService {
       xAccount.tokenExpiresAt.getTime() < Date.now() + 60_000;
 
     if (isExpired) {
-      accessToken = await this.refreshToken(xAccount.id, xAccount.refreshTokenEnc);
+      accessToken = await this.refreshToken(
+        xAccount.id,
+        xAccount.refreshTokenEnc,
+      );
     }
 
     const client = new TwitterApi(accessToken);
@@ -61,7 +64,9 @@ export class XApiClientService {
     refreshTokenEnc: string,
   ): Promise<string> {
     const clientId = this.configService.get<string>('twitter.clientId')!;
-    const clientSecret = this.configService.get<string>('twitter.clientSecret')!;
+    const clientSecret = this.configService.get<string>(
+      'twitter.clientSecret',
+    )!;
 
     const refreshToken = this.tokenCrypto.decrypt(refreshTokenEnc);
 

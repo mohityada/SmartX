@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  EventSourceAdapter,
-  NormalizedEvent,
-} from './event-source.adapter';
+import { EventSourceAdapter, NormalizedEvent } from './event-source.adapter';
 
 interface NewsApiArticle {
   title: string;
@@ -45,7 +42,9 @@ export class NewsAdapter implements EventSourceAdapter {
 
   async fetchEvents(): Promise<NormalizedEvent[]> {
     if (!this.apiKey) {
-      this.logger.debug('NEWS_API_KEY not configured — skipping news ingestion');
+      this.logger.debug(
+        'NEWS_API_KEY not configured — skipping news ingestion',
+      );
       return [];
     }
 

@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  EventSourceAdapter,
-  NormalizedEvent,
-} from './event-source.adapter';
+import { EventSourceAdapter, NormalizedEvent } from './event-source.adapter';
 
 interface CoinGeckoTrending {
   coins: Array<{
@@ -56,11 +53,11 @@ export class CryptoAdapter implements EventSourceAdapter {
 
       return data.coins.map((coin) => {
         const { item } = coin;
-        const change24h =
-          item.data?.price_change_percentage_24h?.['usd'];
-        const description = change24h !== undefined
-          ? `${item.name} (${item.symbol.toUpperCase()}) is trending. 24h change: ${change24h.toFixed(2)}%. Market cap rank: #${item.market_cap_rank}`
-          : `${item.name} (${item.symbol.toUpperCase()}) is trending on CoinGecko. Market cap rank: #${item.market_cap_rank}`;
+        const change24h = item.data?.price_change_percentage_24h?.['usd'];
+        const description =
+          change24h !== undefined
+            ? `${item.name} (${item.symbol.toUpperCase()}) is trending. 24h change: ${change24h.toFixed(2)}%. Market cap rank: #${item.market_cap_rank}`
+            : `${item.name} (${item.symbol.toUpperCase()}) is trending on CoinGecko. Market cap rank: #${item.market_cap_rank}`;
 
         return {
           source: this.source,

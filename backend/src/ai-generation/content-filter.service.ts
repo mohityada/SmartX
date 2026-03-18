@@ -68,7 +68,10 @@ export class ContentFilterService {
     }
 
     // Strip external URLs (LLMs may hallucinate links)
-    const sanitized = trimmed.replace(URL_REGEX, '').replace(/\s{2,}/g, ' ').trim();
+    const sanitized = trimmed
+      .replace(URL_REGEX, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
 
     if (!sanitized) {
       return { passed: false, reason: 'Content was only URLs' };

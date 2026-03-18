@@ -54,7 +54,9 @@ export class PostingService {
     // Guard: rate limit check
     const canPost = await this.rateLimiter.canPost(xAccount.id);
     if (!canPost) {
-      const nextAvailable = await this.rateLimiter.getNextAvailableTime(xAccount.id);
+      const nextAvailable = await this.rateLimiter.getNextAvailableTime(
+        xAccount.id,
+      );
       const retryAfterMs = nextAvailable
         ? Math.max(0, nextAvailable.getTime() - Date.now()) + 1000
         : 15 * 60 * 1000;
@@ -81,7 +83,10 @@ export class PostingService {
     }
 
     try {
-      const result = await this.xApiClient.postTweet(xAccount.id, tweet.content);
+      const result = await this.xApiClient.postTweet(
+        xAccount.id,
+        tweet.content,
+      );
 
       // Record the post for rate-limiting
       await this.rateLimiter.record(xAccount.id);

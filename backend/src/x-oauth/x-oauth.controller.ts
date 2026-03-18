@@ -57,15 +57,17 @@ export class XOAuthController {
   })
   @ApiQuery({ name: 'code', required: true })
   @ApiQuery({ name: 'state', required: true })
-  @ApiResponse({ status: 302, description: 'Redirect to frontend on success or error' })
+  @ApiResponse({
+    status: 302,
+    description: 'Redirect to frontend on success or error',
+  })
   async callback(
     @Query('code') code: string,
     @Query('state') state: string,
     @Query('error') error: string | undefined,
     @Res() res: express.Response,
   ): Promise<void> {
-    const frontendBaseUrl =
-      process.env.FRONTEND_URL ?? 'http://localhost:3001';
+    const frontendBaseUrl = process.env.FRONTEND_URL ?? 'http://localhost:3001';
 
     // Handle user denial or error from X
     if (error) {

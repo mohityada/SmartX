@@ -14,13 +14,18 @@ import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class EventSubscriptionDto {
-
-  @ApiProperty({ example: 'crypto', description: 'Event source (e.g. crypto, news)' })
+  @ApiProperty({
+    example: 'crypto',
+    description: 'Event source (e.g. crypto, news)',
+  })
   @IsString()
   @MaxLength(50)
   source: string;
 
-  @ApiProperty({ example: 'price_alert', description: 'Event category within the source' })
+  @ApiProperty({
+    example: 'price_alert',
+    description: 'Event category within the source',
+  })
   @IsString()
   @MaxLength(50)
   category: string;

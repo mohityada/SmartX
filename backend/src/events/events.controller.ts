@@ -47,7 +47,9 @@ export class EventsController {
 
   @Post('ingest')
   @HttpCode(HttpStatus.ACCEPTED)
-  @ApiOperation({ summary: 'Trigger an immediate ingestion cycle (enqueues jobs)' })
+  @ApiOperation({
+    summary: 'Trigger an immediate ingestion cycle (enqueues jobs)',
+  })
   @ApiResponse({ status: 202, description: 'Ingestion jobs enqueued' })
   async triggerIngestion() {
     await this.eventsService.scheduleIngestion();

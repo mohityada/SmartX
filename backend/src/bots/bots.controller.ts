@@ -122,7 +122,9 @@ export class BotsController {
     @CurrentUser('id') userId: string,
     @Query('limit') limit?: string,
   ) {
-    const parsedLimit = limit ? Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200) : 50;
+    const parsedLimit = limit
+      ? Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200)
+      : 50;
     return this.botsService.getActivityLog(id, userId, parsedLimit);
   }
 }

@@ -32,10 +32,8 @@ export class HealthController {
       this.checkRedis(),
     ]);
 
-    const allUp =
-      database.status === 'up' && redisStatus.status === 'up';
-    const allDown =
-      database.status === 'down' && redisStatus.status === 'down';
+    const allUp = database.status === 'up' && redisStatus.status === 'up';
+    const allDown = database.status === 'down' && redisStatus.status === 'down';
 
     return {
       status: allUp ? 'ok' : allDown ? 'down' : 'degraded',

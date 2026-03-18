@@ -42,9 +42,7 @@ export class SchedulerService {
       this.logger.warn(
         `Bot ${tweet.botId} has hit its daily limit (${dailyLimit}). Remaining: ${remaining}`,
       );
-      throw new Error(
-        `Bot has reached its daily tweet limit of ${dailyLimit}`,
-      );
+      throw new Error(`Bot has reached its daily tweet limit of ${dailyLimit}`);
     }
 
     const delay = Math.max(0, scheduledFor.getTime() - Date.now());
@@ -105,7 +103,9 @@ export class SchedulerService {
       data: { scheduledFor: new Date(), jobId: job.id },
     });
 
-    this.logger.log(`Post-immediately enqueued tweet ${tweetId} (job ${job.id})`);
+    this.logger.log(
+      `Post-immediately enqueued tweet ${tweetId} (job ${job.id})`,
+    );
     return job;
   }
 
@@ -176,9 +176,7 @@ export class SchedulerService {
       select: { id: true },
     });
 
-    this.logger.log(
-      `Auto-scheduling for ${activeBots.length} active bots`,
-    );
+    this.logger.log(`Auto-scheduling for ${activeBots.length} active bots`);
 
     for (const bot of activeBots) {
       try {
@@ -313,7 +311,9 @@ export class SchedulerService {
     const activeHours = activeEndHour - activeStartHour;
 
     // Minutes between posts to evenly distribute across the day
-    const intervalMinutes = Math.floor((activeHours * 60) / Math.max(frequency, 1));
+    const intervalMinutes = Math.floor(
+      (activeHours * 60) / Math.max(frequency, 1),
+    );
 
     // Start from the next available slot after now
     const todayStart = new Date(now);

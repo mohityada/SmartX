@@ -1,4 +1,7 @@
-export type { EventSourceAdapter, NormalizedEvent } from './event-source.adapter';
+export type {
+  EventSourceAdapter,
+  NormalizedEvent,
+} from './event-source.adapter';
 export { NewsAdapter } from './news.adapter';
 export { CryptoAdapter } from './crypto.adapter';
 export { RssAdapter } from './rss.adapter';
