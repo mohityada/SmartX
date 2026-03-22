@@ -20,16 +20,14 @@ function VerifyEmailContent() {
   const token = searchParams.get("token") ?? "";
 
   const [status, setStatus] = useState<"loading" | "success" | "error">(
-    "loading",
+    token ? "loading" : "error",
   );
-  const [errorMessage, setErrorMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState(
+    token ? "" : "Invalid verification link — no token found.",
+  );
 
   useEffect(() => {
-    if (!token) {
-      setStatus("error");
-      setErrorMessage("Invalid verification link — no token found.");
-      return;
-    }
+    if (!token) return;
 
     authApi
       .verifyEmail(token)
