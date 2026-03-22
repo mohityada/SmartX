@@ -44,7 +44,7 @@ export class HealthController {
 
   @Get('live')
   live() {
-    return { status: 'ok' };
+    return { status: 'ok', commitSha: process.env.RAILWAY_GIT_COMMIT_SHA ?? 'local' };
   }
 
   @Get('ready')
