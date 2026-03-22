@@ -3,14 +3,11 @@ import {
   Bot,
   CalendarClock,
   ChevronRight,
-  Globe,
   Key,
-  LayoutDashboard,
   LineChart,
   MessageSquareText,
   Shield,
   Sparkles,
-  UserPlus,
   Zap,
 } from "lucide-react";
 import { GuideHeaderActions, GuideCTAActions } from "./guide-header-actions";
