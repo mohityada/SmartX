@@ -37,8 +37,8 @@ export class XOAuthService {
     this.clientSecret =
       this.configService.get<string>('twitter.clientSecret') ?? '';
     this.callbackUrl =
-      this.configService.get<string>('X_OAUTH_CALLBACK_URL') ??
-      'http://127.0.0.1:3000/api/auth/x/callback';
+      this.configService.get<string>('twitter.callbackUrl') ??
+      'http://localhost:3000/api/x-oauth/callback';
   }
 
   /**

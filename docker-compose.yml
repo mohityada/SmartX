@@ -63,7 +63,7 @@ services:
       SPORTS_LEAGUE_IDS: ${SPORTS_LEAGUE_IDS:-4487}
       RSS_FEED_URLS: ${RSS_FEED_URLS:-https://www.espncricinfo.com/rss/content/story/feeds/0.xml}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3001}
-      X_OAUTH_CALLBACK_URL: ${X_OAUTH_CALLBACK_URL:-http://127.0.0.1:3000/api/auth/x/callback}
+      X_OAUTH_CALLBACK_URL: ${X_OAUTH_CALLBACK_URL:-http://localhost:3000/api/x-oauth/callback}
     ports:
       - "3000:3000"
     healthcheck:

@@ -24,7 +24,7 @@ import { XOAuthService } from './x-oauth.service';
 import { JwtAuthGuard, CurrentUser } from '../common';
 
 @ApiTags('X OAuth')
-@Controller('auth/x')
+@Controller('x-oauth')
 export class XOAuthController {
   private readonly logger = new Logger(XOAuthController.name);
 

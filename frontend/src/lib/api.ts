@@ -238,12 +238,12 @@ export const analyticsApi = {
 // ─── X Accounts ──────────────────────────────────────────────────────────────
 
 export const xAccountsApi = {
-  getAuthorizeUrl: () => `${API_BASE_URL}/auth/x/authorize`,
+  getAuthorizeUrl: () => `${API_BASE_URL}/x-oauth/authorize`,
 
-  list: () => request<XAccountWithCount[]>("/auth/x/accounts"),
+  list: () => request<XAccountWithCount[]>("/x-oauth/accounts"),
 
   disconnect: (id: string) =>
-    request<void>(`/auth/x/accounts/${encodeURIComponent(id)}`, {
+    request<void>(`/x-oauth/accounts/${encodeURIComponent(id)}`, {
       method: "DELETE",
     }),
 };
