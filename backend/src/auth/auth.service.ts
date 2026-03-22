@@ -2,12 +2,17 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from '../common/prisma';
 import { RegisterDto, AuthTokensDto } from './dto';
+import { MailService } from './mail.service';
+
+const EMAIL_VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 @Injectable()
 export class AuthService {
@@ -17,6 +22,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly mailService: MailService,
   ) {
     this.refreshExpiration =
       this.configService.get<string>('jwt.refreshExpiration') ?? '7d';
@@ -39,6 +45,9 @@ export class AuthService {
         displayName: dto.displayName,
       },
     });
+
+    // Send verification email (fire-and-forget)
+    this.sendVerificationToken(user.id, user.email);
 
     return this.generateTokens(user.id, user.email);
   }
@@ -70,6 +79,110 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
     return this.generateTokens(user.id, user.email);
+  }
+
+  // ── Email Verification ────────────────────────────────────────────────────
+
+  async verifyEmail(token: string): Promise<void> {
+    const authToken = await this.prisma.authToken.findUnique({
+      where: { token },
+    });
+
+    if (
+      !authToken ||
+      authToken.type !== 'email_verification' ||
+      authToken.usedAt ||
+      authToken.expiresAt < new Date()
+    ) {
+      throw new BadRequestException('Invalid or expired verification link');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: authToken.userId },
+        data: { emailVerified: true },
+      }),
+      this.prisma.authToken.update({
+        where: { id: authToken.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+  }
+
+  async resendVerificationEmail(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) throw new UnauthorizedException('User not found');
+    if (user.emailVerified) throw new BadRequestException('Email already verified');
+
+    await this.sendVerificationToken(user.id, user.email);
+  }
+
+  // ── Forgot / Reset Password ───────────────────────────────────────────────
+
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    // Always return success to prevent email enumeration
+    if (!user) return;
+
+    const token = crypto.randomBytes(32).toString('base64url');
+    await this.prisma.authToken.create({
+      data: {
+        userId: user.id,
+        token,
+        type: 'password_reset',
+        expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
+      },
+    });
+
+    await this.mailService.sendPasswordResetEmail(user.email, token);
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const authToken = await this.prisma.authToken.findUnique({
+      where: { token },
+    });
+
+    if (
+      !authToken ||
+      authToken.type !== 'password_reset' ||
+      authToken.usedAt ||
+      authToken.expiresAt < new Date()
+    ) {
+      throw new BadRequestException('Invalid or expired reset link');
+    }
+
+    const passwordHash = await this.hashPassword(newPassword);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: authToken.userId },
+        data: { passwordHash },
+      }),
+      this.prisma.authToken.update({
+        where: { id: authToken.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+  }
+
+  // ── Private helpers ───────────────────────────────────────────────────────
+
+  private async sendVerificationToken(
+    userId: string,
+    email: string,
+  ): Promise<void> {
+    const token = crypto.randomBytes(32).toString('base64url');
+    await this.prisma.authToken.create({
+      data: {
+        userId,
+        token,
+        type: 'email_verification',
+        expiresAt: new Date(Date.now() + EMAIL_VERIFY_TTL_MS),
+      },
+    });
+    await this.mailService.sendVerificationEmail(email, token);
   }
 
   private generateTokens(userId: string, email: string): AuthTokensDto {

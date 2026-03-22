@@ -154,6 +154,29 @@ export const authApi = {
   },
 
   getTokens: getStoredTokens,
+
+  forgotPassword: (email: string) =>
+    request<{ message: string }>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (token: string, password: string) =>
+    request<{ message: string }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    }),
+
+  verifyEmail: (token: string) =>
+    request<{ message: string }>("/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+
+  resendVerification: () =>
+    request<{ message: string }>("/auth/resend-verification", {
+      method: "POST",
+    }),
 };
 
 // ─── Users ───────────────────────────────────────────────────────────────────

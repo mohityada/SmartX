@@ -11,6 +11,7 @@ import {
   redisConfig,
   claudeConfig,
   twitterConfig,
+  mailConfig,
 } from './config';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -29,7 +30,7 @@ import { XOAuthModule } from './x-oauth/x-oauth.module';
     // Global config
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, jwtConfig, redisConfig, claudeConfig, twitterConfig],
+      load: [appConfig, jwtConfig, redisConfig, claudeConfig, twitterConfig, mailConfig],
     }),
 
     // Cron scheduling

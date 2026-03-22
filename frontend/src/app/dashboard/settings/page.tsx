@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
-import { usersApi, xAccountsApi } from "@/lib/api";
+import { usersApi, xAccountsApi, authApi } from "@/lib/api";
 import { useXAccounts, useDisconnectXAccount } from "@/hooks/use-x-accounts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -176,9 +176,31 @@ export default function SettingsPage() {
             <span className="text-sm text-muted-foreground">
               Email Verified
             </span>
-            <Badge variant={user?.emailVerified ? "default" : "secondary"}>
-              {user?.emailVerified ? "Verified" : "Unverified"}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant={user?.emailVerified ? "default" : "secondary"}>
+                {user?.emailVerified ? "Verified" : "Unverified"}
+              </Badge>
+              {!user?.emailVerified && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      await authApi.resendVerification();
+                      toast.success("Verification email sent — check your inbox");
+                    } catch (err) {
+                      toast.error(
+                        err instanceof Error
+                          ? err.message
+                          : "Failed to send verification email",
+                      );
+                    }
+                  }}
+                >
+                  Resend
+                </Button>
+              )}
+            </div>
           </div>
           <Separator />
           <div className="flex items-center justify-between">
