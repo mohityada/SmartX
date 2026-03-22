@@ -60,6 +60,8 @@ function BotEditForm({
   const [tone, setTone] = useState(bot.tone);
   const [language, setLanguage] = useState(bot.language);
   const [postingFrequency, setPostingFrequency] = useState(bot.postingFrequency);
+  const [scheduleStartHour, setScheduleStartHour] = useState(bot.scheduleStartHour ?? 8);
+  const [scheduleEndHour, setScheduleEndHour] = useState(bot.scheduleEndHour ?? 23);
   const [topicInput, setTopicInput] = useState("");
   const [topics, setTopics] = useState<string[]>(bot.topics.map((t) => t.topic));
   const [xAccountId, setXAccountId] = useState<string>(bot.xAccountId ?? "");
@@ -85,6 +87,8 @@ function BotEditForm({
         tone,
         language,
         postingFrequency,
+        scheduleStartHour,
+        scheduleEndHour,
         topics,
         xAccountId: xAccountId || undefined,
       },
@@ -210,6 +214,41 @@ function BotEditForm({
                         setPostingFrequency(parseInt(e.target.value) || 4)
                       }
                     />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="startHour">Schedule Start Hour (UTC)</Label>
+                    <Input
+                      id="startHour"
+                      type="number"
+                      min={0}
+                      max={23}
+                      value={scheduleStartHour}
+                      onChange={(e) =>
+                        setScheduleStartHour(parseInt(e.target.value) || 0)
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Earliest hour the bot will post (0-23)
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endHour">Schedule End Hour (UTC)</Label>
+                    <Input
+                      id="endHour"
+                      type="number"
+                      min={1}
+                      max={24}
+                      value={scheduleEndHour}
+                      onChange={(e) =>
+                        setScheduleEndHour(parseInt(e.target.value) || 23)
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Latest hour the bot will post (1-24)
+                    </p>
                   </div>
                 </div>
               </CardContent>

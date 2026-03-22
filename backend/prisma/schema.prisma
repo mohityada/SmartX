@@ -105,6 +105,8 @@ model Bot {
   tone             String   @default("neutral") @db.VarChar(50)
   language         String   @default("en") @db.VarChar(10)
   postingFrequency Int      @default(4) @map("posting_frequency")
+  scheduleStartHour Int     @default(8) @map("schedule_start_hour")
+  scheduleEndHour   Int     @default(23) @map("schedule_end_hour")
   isActive         Boolean  @default(true) @map("is_active")
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz()

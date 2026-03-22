@@ -39,6 +39,8 @@ export interface Bot {
   tone: string;
   language: string;
   postingFrequency: number;
+  scheduleStartHour: number;
+  scheduleEndHour: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -68,6 +70,8 @@ export interface CreateBotPayload {
   tone?: string;
   language?: string;
   postingFrequency?: number;
+  scheduleStartHour?: number;
+  scheduleEndHour?: number;
   xAccountId?: string;
   topics?: string[];
   eventSubscriptions?: { source: string; category: string }[];

@@ -242,6 +242,23 @@ export const tweetsApi = {
     request<Tweet>(`/tweets/${encodeURIComponent(id)}/approve`, {
       method: "PATCH",
     }),
+
+  edit: (id: string, content: string) =>
+    request<Tweet>(`/tweets/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ content }),
+    }),
+
+  schedule: (id: string, scheduledFor: string) =>
+    request<Tweet>(`/tweets/${encodeURIComponent(id)}/schedule`, {
+      method: "POST",
+      body: JSON.stringify({ scheduledFor }),
+    }),
+
+  postNow: (id: string) =>
+    request<Tweet>(`/tweets/${encodeURIComponent(id)}/post-now`, {
+      method: "POST",
+    }),
 };
 
 // ─── Analytics ───────────────────────────────────────────────────────────────

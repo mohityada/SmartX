@@ -9,6 +9,7 @@ import {
   CryptoAdapter,
   RssAdapter,
   SportsAdapter,
+  TrendingAdapter,
 } from './adapters';
 
 @Module({
@@ -26,6 +27,7 @@ import {
     CryptoAdapter,
     RssAdapter,
     SportsAdapter,
+    TrendingAdapter,
 
     // Collect all adapters into a single injectable array
     {
@@ -35,8 +37,9 @@ import {
         crypto: CryptoAdapter,
         rss: RssAdapter,
         sports: SportsAdapter,
-      ) => [news, crypto, rss, sports],
-      inject: [NewsAdapter, CryptoAdapter, RssAdapter, SportsAdapter],
+        trending: TrendingAdapter,
+      ) => [news, crypto, rss, sports, trending],
+      inject: [NewsAdapter, CryptoAdapter, RssAdapter, SportsAdapter, TrendingAdapter],
     },
   ],
   exports: [EventsService],

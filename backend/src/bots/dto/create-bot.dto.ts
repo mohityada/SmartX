@@ -79,6 +79,32 @@ export class CreateBotDto {
   postingFrequency?: number;
 
   @ApiPropertyOptional({
+    example: 8,
+    description: 'Hour (0-23 UTC) to start posting tweets',
+    minimum: 0,
+    maximum: 23,
+    default: 8,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  scheduleStartHour?: number;
+
+  @ApiPropertyOptional({
+    example: 23,
+    description: 'Hour (0-23 UTC) to stop posting tweets',
+    minimum: 1,
+    maximum: 24,
+    default: 23,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(24)
+  scheduleEndHour?: number;
+
+  @ApiPropertyOptional({
     example: ['bitcoin', 'ethereum', 'defi'],
     description: 'Content topics the bot should tweet about',
   })

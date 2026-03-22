@@ -144,10 +144,12 @@ export class SchedulerService {
       return 0;
     }
 
-    // Calculate time slots spread across the day
+    // Calculate time slots using bot's custom posting window
     const slots = this.calculateTimeSlots(
       toSchedule.length,
       bot.postingFrequency,
+      bot.scheduleStartHour,
+      bot.scheduleEndHour,
     );
 
     let scheduled = 0;
@@ -298,17 +300,20 @@ export class SchedulerService {
   }
 
   /**
-   * Distribute N tweets across active hours (8:00–23:00 UTC).
-   * Uses the bot's posting frequency to determine ideal spacing.
+   * Distribute N tweets across active hours.
+   * Uses the bot's posting frequency and custom schedule window.
    */
-  private calculateTimeSlots(count: number, frequency: number): Date[] {
+  private calculateTimeSlots(
+    count: number,
+    frequency: number,
+    startHour = 8,
+    endHour = 23,
+  ): Date[] {
     const now = new Date();
     const slots: Date[] = [];
 
-    // Active posting window: 8am to 11pm (15 hours)
-    const activeStartHour = 8;
-    const activeEndHour = 23;
-    const activeHours = activeEndHour - activeStartHour;
+    const activeHours = endHour - startHour;
+    if (activeHours <= 0) return slots;
 
     // Minutes between posts to evenly distribute across the day
     const intervalMinutes = Math.floor(
@@ -317,11 +322,11 @@ export class SchedulerService {
 
     // Start from the next available slot after now
     const todayStart = new Date(now);
-    todayStart.setUTCHours(activeStartHour, 0, 0, 0);
+    todayStart.setUTCHours(startHour, 0, 0, 0);
 
     // If we're past today's window, start tomorrow
     const todayEnd = new Date(now);
-    todayEnd.setUTCHours(activeEndHour, 0, 0, 0);
+    todayEnd.setUTCHours(endHour, 0, 0, 0);
 
     let baseTime: Date;
     if (now >= todayEnd) {

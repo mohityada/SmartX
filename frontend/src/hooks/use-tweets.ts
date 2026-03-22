@@ -31,3 +31,47 @@ export function useApproveTweet() {
     },
   });
 }
+
+export function useEditTweet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, content }: { id: string; content: string }) =>
+      tweetsApi.edit(id, content),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tweets"] });
+      toast.success("Tweet updated");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to update tweet");
+    },
+  });
+}
+
+export function useScheduleTweet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, scheduledFor }: { id: string; scheduledFor: string }) =>
+      tweetsApi.schedule(id, scheduledFor),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tweets"] });
+      toast.success("Tweet scheduled");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to schedule tweet");
+    },
+  });
+}
+
+export function usePostNow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => tweetsApi.postNow(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tweets"] });
+      toast.success("Tweet queued for posting");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to post tweet");
+    },
+  });
+}

@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { useBots } from "@/hooks/use-bots";
-import { useTweets, useApproveTweet } from "@/hooks/use-tweets";
+import {
+  useTweets,
+  useApproveTweet,
+  useEditTweet,
+  usePostNow,
+  useScheduleTweet,
+} from "@/hooks/use-tweets";
 import type { TweetStatus } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +43,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Check, Heart, Repeat2, Eye, ExternalLink } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Check,
+  Heart,
+  Repeat2,
+  Eye,
+  ExternalLink,
+  Pencil,
+  Send,
+  Clock,
+} from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import type { Tweet } from "@/types";
 
@@ -68,12 +86,23 @@ export default function TweetsPage() {
   const [botFilter, setBotFilter] = useState<string>("all");
   const [selectedTweet, setSelectedTweet] = useState<Tweet | null>(null);
 
+  // Edit dialog state
+  const [editingTweet, setEditingTweet] = useState<Tweet | null>(null);
+  const [editContent, setEditContent] = useState("");
+
+  // Schedule dialog state
+  const [schedulingTweet, setSchedulingTweet] = useState<Tweet | null>(null);
+  const [scheduleDate, setScheduleDate] = useState("");
+
   const { data: bots } = useBots();
   const { data: tweets, isLoading } = useTweets({
     status: statusFilter === "all" ? undefined : statusFilter,
     botId: botFilter === "all" ? undefined : botFilter,
   });
   const approveTweet = useApproveTweet();
+  const editTweet = useEditTweet();
+  const postNow = usePostNow();
+  const scheduleTweet = useScheduleTweet();
 
   const sortedTweets = tweets
     ?.slice()
@@ -81,6 +110,27 @@ export default function TweetsPage() {
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
+
+  const canEdit = (status: TweetStatus) =>
+    status === "draft" || status === "approved";
+
+  const canPostNow = (status: TweetStatus) =>
+    status === "draft" || status === "approved";
+
+  const canSchedule = (status: TweetStatus) =>
+    status === "draft" || status === "approved";
+
+  function openEdit(tweet: Tweet) {
+    setEditContent(tweet.content);
+    setEditingTweet(tweet);
+  }
+
+  function openSchedule(tweet: Tweet) {
+    // Default to 1 hour from now
+    const dt = new Date(Date.now() + 60 * 60 * 1000);
+    setScheduleDate(dt.toISOString().slice(0, 16));
+    setSchedulingTweet(tweet);
+  }
 
   return (
     <div className="space-y-6">
@@ -203,28 +253,58 @@ export default function TweetsPage() {
                           })}
                         </TableCell>
                         <TableCell>
-                          {tweet.status === "draft" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => approveTweet.mutate(tweet.id)}
-                              disabled={approveTweet.isPending}
-                            >
-                              <Check className="mr-1 h-3 w-3" />
-                              Approve
-                            </Button>
-                          )}
-                          {tweet.xTweetId && (
-                            <a
-                              href={`https://x.com/i/status/${tweet.xTweetId}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center text-xs text-primary hover:underline"
-                            >
-                              <ExternalLink className="mr-1 h-3 w-3" />
-                              View
-                            </a>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {tweet.status === "draft" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => approveTweet.mutate(tweet.id)}
+                                disabled={approveTweet.isPending}
+                              >
+                                <Check className="mr-1 h-3 w-3" />
+                                Approve
+                              </Button>
+                            )}
+                            {canEdit(tweet.status) && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openEdit(tweet)}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            )}
+                            {canPostNow(tweet.status) && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => postNow.mutate(tweet.id)}
+                                disabled={postNow.isPending}
+                              >
+                                <Send className="h-3 w-3" />
+                              </Button>
+                            )}
+                            {canSchedule(tweet.status) && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openSchedule(tweet)}
+                              >
+                                <Clock className="h-3 w-3" />
+                              </Button>
+                            )}
+                            {tweet.xTweetId && (
+                              <a
+                                href={`https://x.com/i/status/${tweet.xTweetId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center text-xs text-primary hover:underline"
+                              >
+                                <ExternalLink className="mr-1 h-3 w-3" />
+                                View
+                              </a>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -299,7 +379,19 @@ export default function TweetsPage() {
               )}
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="flex-wrap gap-2">
+            {selectedTweet && canEdit(selectedTweet.status) && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  openEdit(selectedTweet);
+                  setSelectedTweet(null);
+                }}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            )}
             {selectedTweet?.status === "draft" && (
               <Button
                 onClick={() => {
@@ -311,6 +403,32 @@ export default function TweetsPage() {
               >
                 <Check className="mr-2 h-4 w-4" />
                 Approve
+              </Button>
+            )}
+            {selectedTweet && canPostNow(selectedTweet.status) && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  postNow.mutate(selectedTweet.id, {
+                    onSuccess: () => setSelectedTweet(null),
+                  });
+                }}
+                disabled={postNow.isPending}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                Post Now
+              </Button>
+            )}
+            {selectedTweet && canSchedule(selectedTweet.status) && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  openSchedule(selectedTweet);
+                  setSelectedTweet(null);
+                }}
+              >
+                <Clock className="mr-2 h-4 w-4" />
+                Schedule
               </Button>
             )}
             {selectedTweet?.xTweetId && (
@@ -328,6 +446,98 @@ export default function TweetsPage() {
                 View on X
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Tweet Dialog */}
+      <Dialog
+        open={!!editingTweet}
+        onOpenChange={(open) => !open && setEditingTweet(null)}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Tweet</DialogTitle>
+            <DialogDescription>
+              Modify the tweet content. Max 280 characters.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              rows={4}
+              maxLength={280}
+              className="resize-none"
+            />
+            <p className="text-xs text-muted-foreground text-right">
+              {editContent.length}/280
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingTweet(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (editingTweet) {
+                  editTweet.mutate(
+                    { id: editingTweet.id, content: editContent },
+                    { onSuccess: () => setEditingTweet(null) },
+                  );
+                }
+              }}
+              disabled={editTweet.isPending || !editContent.trim()}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Schedule Tweet Dialog */}
+      <Dialog
+        open={!!schedulingTweet}
+        onOpenChange={(open) => !open && setSchedulingTweet(null)}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Schedule Tweet</DialogTitle>
+            <DialogDescription>
+              Choose when this tweet should be posted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="schedule-datetime">Date &amp; Time</Label>
+            <Input
+              id="schedule-datetime"
+              type="datetime-local"
+              value={scheduleDate}
+              onChange={(e) => setScheduleDate(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSchedulingTweet(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (schedulingTweet && scheduleDate) {
+                  scheduleTweet.mutate(
+                    {
+                      id: schedulingTweet.id,
+                      scheduledFor: new Date(scheduleDate).toISOString(),
+                    },
+                    { onSuccess: () => setSchedulingTweet(null) },
+                  );
+                }
+              }}
+              disabled={scheduleTweet.isPending || !scheduleDate}
+            >
+              <Clock className="mr-2 h-4 w-4" />
+              Schedule
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
