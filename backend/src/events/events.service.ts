@@ -61,9 +61,9 @@ export class EventsService {
    * Process a single normalized event: deduplicate, persist, and fan-out
    * to the AI generation queue for every subscribed active bot.
    *
-   * Returns `true` if the event was newly created, `false` if it already existed.
+   * Returns the event ID if newly created, or `null` if it already existed.
    */
-  async ingestSingleEvent(event: NormalizedEvent): Promise<boolean> {
+  async ingestSingleEvent(event: NormalizedEvent): Promise<string | null> {
     // 1. Exact dedup by source + externalId
     const existing = await this.prisma.event.findUnique({
       where: {
@@ -74,7 +74,7 @@ export class EventsService {
       },
     });
 
-    if (existing) return false;
+    if (existing) return null;
 
     // 2. Cross-source fuzzy dedup: skip if a similar event title was
     //    already ingested within the dedup window (from ANY source).
@@ -99,38 +99,64 @@ export class EventsService {
           `Skipping duplicate event "${event.title.slice(0, 60)}…" ` +
             `(similar to existing event ${recent.id}, similarity=${sim.toFixed(2)})`,
         );
-        return false;
+        return null;
       }
     }
 
     const created = await this.prisma.event.create({ data: event });
 
-    // Find all active bots subscribed to this source + category
-    const subscribers = await this.prisma.botEventSubscription.findMany({
-      where: {
-        source: event.source,
-        category: event.category,
-      },
-      include: { bot: { select: { id: true, isActive: true } } },
+    return created.id;
+  }
+
+  /**
+   * Fan out AI-generation jobs for a batch of newly ingested events.
+   * Groups events by subscriber bot, enqueuing one batch job per bot
+   * instead of one job per event — saves LLM API cost.
+   */
+  async fanOutBatchJobs(eventIds: string[]): Promise<number> {
+    if (!eventIds.length) return 0;
+
+    // Load events to get source + category for subscription matching
+    const events = await this.prisma.event.findMany({
+      where: { id: { in: eventIds } },
+      select: { id: true, source: true, category: true },
     });
 
-    // Enqueue AI generation jobs for active bots
-    const jobs = subscribers
-      .filter((sub) => sub.bot.isActive)
-      .map((sub) => ({
-        name: 'generate-tweet',
-        data: { eventId: created.id, botId: sub.botId },
-        opts: DEFAULT_JOB_OPTS[QUEUES.EVENT_PROCESSING],
-      }));
+    // Collect all (botId → eventIds) pairs
+    const botEventMap = new Map<string, string[]>();
+
+    for (const event of events) {
+      const subscribers = await this.prisma.botEventSubscription.findMany({
+        where: {
+          source: event.source,
+          category: event.category,
+        },
+        include: { bot: { select: { id: true, isActive: true } } },
+      });
+
+      for (const sub of subscribers) {
+        if (!sub.bot.isActive) continue;
+        const existing = botEventMap.get(sub.botId) ?? [];
+        existing.push(event.id);
+        botEventMap.set(sub.botId, existing);
+      }
+    }
+
+    // Enqueue one batch job per bot
+    const jobs = Array.from(botEventMap.entries()).map(([botId, evIds]) => ({
+      name: 'generate-tweets-batch',
+      data: { botId, eventIds: evIds },
+      opts: DEFAULT_JOB_OPTS[QUEUES.EVENT_PROCESSING],
+    }));
 
     if (jobs.length) {
       await this.eventQueue.addBulk(jobs);
       this.logger.debug(
-        `Enqueued ${jobs.length} generate-tweet jobs for event ${created.id}`,
+        `Enqueued ${jobs.length} batch generation jobs for ${eventIds.length} events`,
       );
     }
 
-    return true;
+    return jobs.length;
   }
 
   /**

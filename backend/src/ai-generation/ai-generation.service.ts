@@ -5,6 +5,7 @@ import { PrismaService } from '../common/prisma';
 import {
   TweetPromptBuilder,
   PromptParams,
+  BatchEvent,
 } from './prompts/tweet-prompt.builder';
 import { ContentFilterService } from './content-filter.service';
 
@@ -181,6 +182,211 @@ export class AiGenerationService {
 
     this.logger.log(`Generated tweet ${tweet.id} for bot ${botId}`);
     return tweet.id;
+  }
+
+  /**
+   * Generate tweets for multiple events in a single Claude API call.
+   * Saves cost by sending system prompt + recent tweets context only once.
+   *
+   * Falls back to single-event generation for events that fail in batch.
+   */
+  async generateTweetsBatch(
+    botId: string,
+    eventIds: string[],
+  ): Promise<string[]> {
+    // For single event, use the standard path
+    if (eventIds.length === 1) {
+      const id = await this.generateTweet(botId, eventIds[0]);
+      return [id];
+    }
+
+    const bot = await this.prisma.bot.findUniqueOrThrow({
+      where: { id: botId },
+      include: { topics: true },
+    });
+
+    // Load all events
+    const events = await this.prisma.event.findMany({
+      where: { id: { in: eventIds } },
+    });
+
+    // Filter: skip events that already have tweets or are similar to existing ones
+    const eventCutoff = new Date(
+      Date.now() - EVENT_DEDUP_WINDOW_HOURS * 60 * 60 * 1000,
+    );
+    const recentBotTweetsWithEvents = await this.prisma.tweet.findMany({
+      where: {
+        botId,
+        eventId: { not: null },
+        createdAt: { gte: eventCutoff },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: { eventId: true, event: { select: { id: true, title: true } } },
+    });
+
+    const tweetedEventIds = new Set(
+      recentBotTweetsWithEvents.map((t) => t.eventId).filter(Boolean),
+    );
+
+    const eligibleEvents = events.filter((event) => {
+      // Already has a tweet for this exact event
+      if (tweetedEventIds.has(event.id)) return false;
+
+      // Similar to an already-tweeted event
+      const titleBigrams = this.getBigrams(event.title);
+      for (const tw of recentBotTweetsWithEvents) {
+        if (!tw.event) continue;
+        const sim = this.jaccardSimilarity(
+          titleBigrams,
+          this.getBigrams(tw.event.title),
+        );
+        if (sim >= EVENT_TITLE_SIMILARITY_THRESHOLD) {
+          this.logger.debug(
+            `Batch: skipping event "${event.title.slice(0, 50)}…" — similar to already-tweeted event`,
+          );
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (!eligibleEvents.length) {
+      this.logger.log(`Batch: all ${eventIds.length} events skipped (dedup) for bot ${botId}`);
+      return [];
+    }
+
+    // Fetch recent tweets for context
+    const recentTweets = await this.prisma.tweet.findMany({
+      where: { botId },
+      orderBy: { createdAt: 'desc' },
+      take: RECENT_TWEETS_LOOKBACK,
+      select: { content: true },
+    });
+
+    // Build batch prompt
+    const batchEvents: BatchEvent[] = eligibleEvents.map((ev, i) => ({
+      index: i + 1,
+      title: ev.title,
+      description: ev.description,
+    }));
+
+    const systemPrompt = this.promptBuilder.buildBatchSystemPrompt({
+      persona: bot.persona,
+      tone: bot.tone,
+      topics: bot.topics.map((t) => t.topic),
+      recentTweets: recentTweets.map((t) => t.content),
+      language: bot.language,
+    });
+
+    const userPrompt = this.promptBuilder.buildBatchUserPrompt(
+      batchEvents,
+      recentTweets.map((t) => t.content),
+    );
+
+    // Single Claude API call for all events
+    const client = this.getClient();
+    const model = this.configService.get<string>('claude.model')!;
+    const temperature = this.configService.get<number>('claude.temperature')!;
+    // Scale max_tokens: ~80 tokens per tweet
+    const maxTokens = Math.min(
+      eligibleEvents.length * 80 + 100,
+      this.configService.get<number>('claude.maxTokens')! * 2,
+    );
+
+    const response = await client.messages.create({
+      model,
+      max_tokens: maxTokens,
+      temperature,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+
+    const textBlock = response.content.find((block) => block.type === 'text');
+    const rawText = textBlock && 'text' in textBlock ? textBlock.text : '';
+
+    // Parse numbered responses: "1. tweet text\n2. tweet text\n..."
+    const tweetTexts = this.parseBatchResponse(rawText, eligibleEvents.length);
+
+    // Create tweet records
+    const createdIds: string[] = [];
+    const recentContents = recentTweets.map((t) => t.content);
+
+    for (let i = 0; i < eligibleEvents.length; i++) {
+      const event = eligibleEvents[i];
+      const raw = tweetTexts[i];
+
+      if (!raw) {
+        this.logger.warn(`Batch: no tweet generated for event ${event.id} (index ${i + 1})`);
+        continue;
+      }
+
+      const cleaned = this.cleanTweetText(raw);
+
+      // Content filter
+      const filterResult = this.contentFilter.filter(cleaned);
+      if (!filterResult.passed) {
+        this.logger.warn(`Batch: tweet ${i + 1} filtered — ${filterResult.reason}`);
+        continue;
+      }
+
+      const content = (filterResult.sanitized ?? cleaned).slice(0, 280);
+
+      // Similarity check
+      if (this.isTooSimilar(content, recentContents)) {
+        this.logger.warn(`Batch: tweet ${i + 1} too similar to recent tweets`);
+        continue;
+      }
+
+      const tweet = await this.prisma.tweet.create({
+        data: {
+          botId,
+          eventId: event.id,
+          content,
+          status: 'draft',
+        },
+      });
+
+      await this.prisma.botActivityLog.create({
+        data: {
+          botId,
+          action: 'tweet_generated',
+          metadata: { tweetId: tweet.id, eventId: event.id, batch: true },
+        },
+      });
+
+      createdIds.push(tweet.id);
+      recentContents.push(content); // Add to running dedup list
+    }
+
+    this.logger.log(
+      `Batch: generated ${createdIds.length}/${eligibleEvents.length} tweets for bot ${botId} in 1 API call`,
+    );
+    return createdIds;
+  }
+
+  /**
+   * Parse the numbered batch response from Claude.
+   * Expected format: "1. tweet text\n2. tweet text\n..."
+   */
+  private parseBatchResponse(
+    raw: string,
+    expectedCount: number,
+  ): (string | null)[] {
+    const results: (string | null)[] = new Array(expectedCount).fill(null);
+
+    // Match lines like "1. tweet text" or "1) tweet text"
+    const lineRegex = /^(\d+)[.)]\s*(.+)/gm;
+    let match: RegExpExecArray | null;
+
+    while ((match = lineRegex.exec(raw)) !== null) {
+      const idx = parseInt(match[1], 10) - 1;
+      if (idx >= 0 && idx < expectedCount) {
+        results[idx] = match[2].trim();
+      }
+    }
+
+    return results;
   }
 
   /**

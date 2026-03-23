@@ -10,6 +10,12 @@ export interface PromptParams {
   language?: string;
 }
 
+export interface BatchEvent {
+  index: number;
+  title: string;
+  description: string | null;
+}
+
 const TONE_GUIDES: Record<string, string> = {
   neutral:
     'Write in a balanced, informative style. State facts clearly without strong opinions.',
@@ -87,6 +93,86 @@ export class TweetPromptBuilder {
     lines.push(
       '',
       'Write one tweet about this event. Output only the tweet text.',
+    );
+
+    return lines.join('\n');
+  }
+
+  /**
+   * System prompt for batch generation — same rules, but output format changes.
+   */
+  buildBatchSystemPrompt(params: Omit<PromptParams, 'eventTitle' | 'eventDescription'>): string {
+    const toneGuide = TONE_GUIDES[params.tone] ?? TONE_GUIDES.neutral;
+    const topicList = params.topics.length
+      ? params.topics.join(', ')
+      : 'general';
+
+    const lines = [
+      'You are an expert social media writer for Twitter/X.',
+      '',
+      `TOPICS: ${topicList}`,
+      '',
+      `TONE: ${params.tone}`,
+      toneGuide,
+    ];
+
+    if (params.persona) {
+      lines.push('', `PERSONA: ${params.persona}`);
+    }
+
+    lines.push(
+      '',
+      'RULES:',
+      '- Maximum 280 characters per tweet. Shorter tweets (under 200 chars) often perform better.',
+      '- Do NOT include hashtags unless one is highly relevant.',
+      '- Do NOT include URLs or links.',
+      '- Do NOT use quotation marks around the tweet.',
+      '- Be original—never copy the event headline verbatim.',
+      '- Add your own insight, opinion, or angle to each tweet.',
+      '- Each tweet should have a DIFFERENT angle/perspective.',
+      `- Write in ${params.language ?? 'English'}.`,
+      '',
+      'OUTPUT FORMAT:',
+      '- Output one tweet per line, numbered like: 1. <tweet text>',
+      '- Output ONLY the numbered tweets, nothing else.',
+      '- Do NOT add any explanations or extra text.',
+    );
+
+    return lines.join('\n');
+  }
+
+  /**
+   * User prompt listing multiple events for batch tweet generation.
+   */
+  buildBatchUserPrompt(
+    events: BatchEvent[],
+    recentTweets?: string[],
+  ): string {
+    const lines: string[] = [];
+
+    if (recentTweets?.length) {
+      lines.push(
+        'Your recent tweets (avoid repeating similar phrasing or angles):',
+      );
+      for (const tweet of recentTweets.slice(0, 20)) {
+        lines.push(`- "${tweet}"`);
+      }
+      lines.push('');
+    }
+
+    lines.push(`Write one tweet for each of the following ${events.length} events:`);
+    lines.push('');
+
+    for (const ev of events) {
+      lines.push(`${ev.index}. EVENT: ${ev.title}`);
+      if (ev.description) {
+        lines.push(`   DETAILS: ${ev.description.slice(0, 300)}`);
+      }
+    }
+
+    lines.push('');
+    lines.push(
+      `Output exactly ${events.length} numbered tweets, one per event in the same order.`,
     );
 
     return lines.join('\n');

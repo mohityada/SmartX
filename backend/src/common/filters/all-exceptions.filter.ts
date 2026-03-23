@@ -27,10 +27,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getResponse()
         : 'Internal server error';
 
-    this.logger.error(
-      `${request.method} ${request.url} ${status}`,
-      exception instanceof Error ? exception.stack : undefined,
-    );
+    // 401/403 are expected (expired JWT, missing token) — don't log as ERROR
+    if (status === 401 || status === 403) {
+      this.logger.warn(`${request.method} ${request.url} ${status}`);
+    } else {
+      this.logger.error(
+        `${request.method} ${request.url} ${status}`,
+        exception instanceof Error ? exception.stack : undefined,
+      );
+    }
 
     response.status(status).json({
       statusCode: status,

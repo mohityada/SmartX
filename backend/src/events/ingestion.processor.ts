@@ -44,17 +44,22 @@ export class IngestionProcessor extends WorkerHost {
     this.logger.log(`Ingesting events from "${adapterSource}" (job ${job.id})`);
 
     const events = await adapter.fetchEvents();
-    let ingested = 0;
+    const newEventIds: string[] = [];
 
     for (const event of events) {
-      const wasNew = await this.eventsService.ingestSingleEvent(event);
-      if (wasNew) ingested++;
+      const eventId = await this.eventsService.ingestSingleEvent(event);
+      if (eventId) newEventIds.push(eventId);
+    }
+
+    // Batch fan-out: one job per bot (instead of one per event per bot)
+    if (newEventIds.length) {
+      await this.eventsService.fanOutBatchJobs(newEventIds);
     }
 
     this.logger.log(
-      `Adapter "${adapterSource}": ${ingested} new events out of ${events.length} fetched`,
+      `Adapter "${adapterSource}": ${newEventIds.length} new events out of ${events.length} fetched`,
     );
 
-    return ingested;
+    return newEventIds.length;
   }
 }
