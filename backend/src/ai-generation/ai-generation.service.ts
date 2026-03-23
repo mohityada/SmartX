@@ -9,8 +9,16 @@ import {
 import { ContentFilterService } from './content-filter.service';
 
 const MAX_GENERATION_RETRIES = 3;
-const RECENT_TWEETS_LOOKBACK = 20;
+const RECENT_TWEETS_LOOKBACK = 50;
 const SIMILARITY_THRESHOLD = 0.6;
+
+/**
+ * How far back (in hours) to look for events that already produced tweets
+ * for this bot. If the new event's title is too similar to one that already
+ * generated a tweet, we skip generation entirely rather than wasting an LLM call.
+ */
+const EVENT_DEDUP_WINDOW_HOURS = 48;
+const EVENT_TITLE_SIMILARITY_THRESHOLD = 0.35;
 
 @Injectable()
 export class AiGenerationService {
@@ -60,6 +68,38 @@ export class AiGenerationService {
         `Tweet already exists for bot ${botId} + event ${eventId}: ${existingTweet.id}`,
       );
       return existingTweet.id;
+    }
+
+    // Cross-event dedup: check if this bot already tweeted about a similar event
+    // (different source, same story). Avoids wasting LLM calls.
+    const eventCutoff = new Date(
+      Date.now() - EVENT_DEDUP_WINDOW_HOURS * 60 * 60 * 1000,
+    );
+    const recentBotTweetsWithEvents = await this.prisma.tweet.findMany({
+      where: {
+        botId,
+        eventId: { not: null },
+        createdAt: { gte: eventCutoff },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: { event: { select: { id: true, title: true } } },
+    });
+
+    const eventTitleBigrams = this.getBigrams(event.title);
+    for (const tw of recentBotTweetsWithEvents) {
+      if (!tw.event) continue;
+      const sim = this.jaccardSimilarity(
+        eventTitleBigrams,
+        this.getBigrams(tw.event.title),
+      );
+      if (sim >= EVENT_TITLE_SIMILARITY_THRESHOLD) {
+        this.logger.warn(
+          `Skipping tweet gen for bot ${botId}: event "${event.title.slice(0, 60)}…" ` +
+            `too similar to already-tweeted event ${tw.event.id} (sim=${sim.toFixed(2)})`,
+        );
+        return 'skipped-duplicate-event';
+      }
     }
 
     // Fetch recent tweets to avoid duplication in phrasing
