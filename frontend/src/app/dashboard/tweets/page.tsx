@@ -127,7 +127,8 @@ export default function TweetsPage() {
 
   function openSchedule(tweet: Tweet) {
     // Default to 1 hour from now
-    const dt = new Date(Date.now() + 60 * 60 * 1000);
+    const now = new Date();
+    const dt = new Date(now.getTime() + 60 * 60 * 1000);
     setScheduleDate(dt.toISOString().slice(0, 16));
     setSchedulingTweet(tweet);
   }
