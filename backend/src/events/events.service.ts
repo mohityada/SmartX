@@ -1,3 +1,42 @@
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { PrismaService } from '../common/prisma';
+import { EventSourceAdapter, NormalizedEvent } from './adapters';
+import { QUEUES, DEFAULT_JOB_OPTS } from '../scheduler/queue.constants';
+
+/**
+ * How far back (in hours) to look for similar events when deduplicating
+ * across different sources. A Cricbuzz article and an ESPN article about
+ * the same match posted within this window will be treated as duplicates.
+ */
+const DEDUP_WINDOW_HOURS = 24;
+
+/**
+ * Jaccard bigram similarity threshold for cross-source event title matching.
+ * 0.35 is intentionally lower than tweet-level (0.6) because titles from
+ * different sites use varied wording for the same story.
+ */
+const EVENT_TITLE_SIMILARITY_THRESHOLD = 0.35;
+
+/** @deprecated Use QUEUES.EVENT_PROCESSING from queue.constants instead */
+export const EVENT_QUEUE = QUEUES.EVENT_PROCESSING;
+/** @deprecated Use QUEUES.EVENT_INGESTION from queue.constants instead */
+export const INGESTION_QUEUE = QUEUES.EVENT_INGESTION;
+
+@Injectable()
+export class EventsService {
+  private readonly logger = new Logger(EventsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject('EVENT_SOURCE_ADAPTERS')
+    private readonly adapters: EventSourceAdapter[],
+    @InjectQueue(QUEUES.EVENT_PROCESSING) private readonly eventQueue: Queue,
+    @InjectQueue(QUEUES.EVENT_INGESTION) private readonly ingestionQueue: Queue,
+  ) {}
+
   /**
    * List events with their LLM/tweet pipeline status and actions.
    */
@@ -81,44 +120,6 @@
 
     return { events: pipeline, total, limit, offset };
   }
-import { Injectable, Logger, Inject } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
-import { PrismaService } from '../common/prisma';
-import { EventSourceAdapter, NormalizedEvent } from './adapters';
-import { QUEUES, DEFAULT_JOB_OPTS } from '../scheduler/queue.constants';
-
-/**
- * How far back (in hours) to look for similar events when deduplicating
- * across different sources. A Cricbuzz article and an ESPN article about
- * the same match posted within this window will be treated as duplicates.
- */
-const DEDUP_WINDOW_HOURS = 24;
-
-/**
- * Jaccard bigram similarity threshold for cross-source event title matching.
- * 0.35 is intentionally lower than tweet-level (0.6) because titles from
- * different sites use varied wording for the same story.
- */
-const EVENT_TITLE_SIMILARITY_THRESHOLD = 0.35;
-
-/** @deprecated Use QUEUES.EVENT_PROCESSING from queue.constants instead */
-export const EVENT_QUEUE = QUEUES.EVENT_PROCESSING;
-/** @deprecated Use QUEUES.EVENT_INGESTION from queue.constants instead */
-export const INGESTION_QUEUE = QUEUES.EVENT_INGESTION;
-
-@Injectable()
-export class EventsService {
-  private readonly logger = new Logger(EventsService.name);
-
-  constructor(
-    private readonly prisma: PrismaService,
-    @Inject('EVENT_SOURCE_ADAPTERS')
-    private readonly adapters: EventSourceAdapter[],
-    @InjectQueue(QUEUES.EVENT_PROCESSING) private readonly eventQueue: Queue,
-    @InjectQueue(QUEUES.EVENT_INGESTION) private readonly ingestionQueue: Queue,
-  ) {}
 
   /**
    * Cron job: enqueues one ingestion job per adapter every 5 minutes.
