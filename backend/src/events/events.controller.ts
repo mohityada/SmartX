@@ -45,6 +45,27 @@ export class EventsController {
     });
   }
 
+  @Get('pipeline')
+  @ApiOperation({ summary: 'List events with LLM/tweet pipeline status' })
+  @ApiQuery({ name: 'category', required: false, example: 'trending' })
+  @ApiQuery({ name: 'source', required: false, example: 'crypto' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 50 })
+  @ApiQuery({ name: 'offset', required: false, type: Number, example: 0 })
+  @ApiResponse({ status: 200, description: 'Paginated list of events with pipeline status' })
+  async getPipeline(
+    @Query('category') category?: string,
+    @Query('source') source?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.eventsService.getPipeline({
+      category,
+      source,
+      limit: limit ? parseInt(limit, 10) || 50 : 50,
+      offset: offset ? parseInt(offset, 10) || 0 : 0,
+    });
+  }
+
   @Post('ingest')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({

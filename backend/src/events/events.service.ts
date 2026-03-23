@@ -1,3 +1,86 @@
+  /**
+   * List events with their LLM/tweet pipeline status and actions.
+   */
+  async getPipeline(options: {
+    category?: string;
+    source?: string;
+    limit?: number;
+    offset?: number;
+  }) {
+    const { category, source, limit = 50, offset = 0 } = options;
+
+    const where: Record<string, string> = {};
+    if (category) where.category = category;
+    if (source) where.source = source;
+
+    // Get events with their tweets and scheduled tweets
+    const [events, total] = await Promise.all([
+      this.prisma.event.findMany({
+        where,
+        orderBy: { occurredAt: 'desc' },
+        take: Math.min(limit, 200),
+        skip: offset,
+        include: {
+          tweets: {
+            include: {
+              scheduledTweet: true,
+            },
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+      }),
+      this.prisma.event.count({ where }),
+    ]);
+
+    // For each event, summarize pipeline status
+    const pipeline = events.map((event) => {
+      // Find the most recent tweet for this event (if any)
+      const tweet = event.tweets[0] || null;
+      let status = 'ingested';
+      let llmScheduledAt = null;
+      let tweetScheduledAt = null;
+      let tweetedAt = null;
+      let tweetContent = null;
+      let tweetId = null;
+      let scheduledTweetId = null;
+
+      if (tweet) {
+        tweetId = tweet.id;
+        tweetContent = tweet.content;
+        if (tweet.status === 'draft') {
+          status = 'llm_done';
+        } else if (tweet.status === 'scheduled') {
+          status = 'tweet_scheduled';
+        } else if (tweet.status === 'posted') {
+          status = 'tweeted';
+          tweetedAt = tweet.postedAt;
+        }
+        if (tweet.scheduledTweet) {
+          tweetScheduledAt = tweet.scheduledTweet.scheduledFor;
+          scheduledTweetId = tweet.scheduledTweet.id;
+        }
+      }
+
+      return {
+        eventId: event.id,
+        title: event.title,
+        description: event.description,
+        source: event.source,
+        category: event.category,
+        occurredAt: event.occurredAt,
+        ingestedAt: event.ingestedAt,
+        status,
+        llmScheduledAt, // not tracked yet, placeholder for future
+        tweetScheduledAt,
+        tweetedAt,
+        tweetContent,
+        tweetId,
+        scheduledTweetId,
+      };
+    });
+
+    return { events: pipeline, total, limit, offset };
+  }
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectQueue } from '@nestjs/bullmq';
