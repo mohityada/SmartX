@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useBots } from "@/hooks/use-bots";
 import { useBotAnalytics, useBotAnalyticsActivity } from "@/hooks/use-analytics";
@@ -79,6 +79,12 @@ export default function AnalyticsPage() {
     useBotAnalytics(selectedBotId);
   const { data: activity } = useBotAnalyticsActivity(selectedBotId);
 
+  useEffect(() => {
+    if (!selectedBotId && bots && bots.length > 0) {
+      setSelectedBotId(bots[0].id);
+    }
+  }, [selectedBotId, bots]);
+
   const statusData = summary?.tweetsByStatus
     ? Object.entries(summary.tweetsByStatus)
         .filter(([, count]) => count > 0)
@@ -105,18 +111,22 @@ export default function AnalyticsPage() {
             Performance metrics and engagement insights for your bots.
           </p>
         </div>
-        <Select value={selectedBotId} onValueChange={(v) => setSelectedBotId(v ?? "")}>
-          <SelectTrigger className="w-56">
-            <SelectValue placeholder="Select a bot" />
-          </SelectTrigger>
-          <SelectContent>
-            {bots?.map((bot) => (
-              <SelectItem key={bot.id} value={bot.id}>
-                {bot.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {botsLoading ? (
+          <Skeleton className="h-10 w-56" />
+        ) : (
+          <Select value={selectedBotId} onValueChange={(v) => setSelectedBotId(v ?? "")}>
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Select a bot" />
+            </SelectTrigger>
+            <SelectContent>
+              {bots?.map((bot) => (
+                <SelectItem key={bot.id} value={bot.id}>
+                  {bot.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {!selectedBotId ? (
