@@ -116,7 +116,9 @@ export default function AnalyticsPage() {
         ) : (
           <Select value={selectedBotId} onValueChange={(v) => setSelectedBotId(v ?? "")}>
             <SelectTrigger className="w-56">
-              <SelectValue placeholder="Select a bot" />
+              <SelectValue placeholder="Select a bot">
+                {bots?.find((b) => b.id === selectedBotId)?.name}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {bots?.map((bot) => (

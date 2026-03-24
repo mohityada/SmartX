@@ -60,7 +60,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import type { Tweet } from "@/types";
 
 const STATUS_OPTIONS: { value: TweetStatus | "all"; label: string }[] = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Status" },
   { value: "draft", label: "Draft" },
   { value: "approved", label: "Approved" },
   { value: "scheduled", label: "Scheduled" },
@@ -162,10 +162,12 @@ export default function TweetsPage() {
 
         <Select value={botFilter} onValueChange={(v) => setBotFilter(v ?? "all")}>
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filter by bot" />
+            <SelectValue placeholder="Filter by bot">
+              {botFilter === "all" ? "All Bots" : bots?.find((b) => b.id === botFilter)?.name}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All bots</SelectItem>
+            <SelectItem value="all">All Bots</SelectItem>
             {bots?.map((bot) => (
               <SelectItem key={bot.id} value={bot.id}>
                 {bot.name}
