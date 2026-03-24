@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   BookOpen,
+  Rss,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/bots", label: "Bots", icon: Bot },
   { href: "/dashboard/tweets", label: "Tweets", icon: Twitter },
+  { href: "/dashboard/events", label: "Data Feed", icon: Rss },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/guide", label: "Guide", icon: BookOpen },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },

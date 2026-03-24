@@ -6,6 +6,8 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Param,
+  Body,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -43,6 +45,21 @@ export class EventsController {
       limit: limit ? parseInt(limit, 10) || 50 : 50,
       offset: offset ? parseInt(offset, 10) || 0 : 0,
     });
+  }
+
+  @Get('categories')
+  @ApiOperation({ summary: 'Get all unique ingested categories' })
+  @ApiResponse({ status: 200, description: 'List of categories' })
+  async getCategories() {
+    return this.eventsService.getCategories();
+  }
+
+  @Post(':id/forward')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Forward an event to a specific bot' })
+  @ApiResponse({ status: 200, description: 'Event queued' })
+  async forwardEvent(@Param('id') id: string, @Body('botId') botId: string) {
+    return this.eventsService.forwardEvent(id, botId);
   }
 
   @Get('pipeline')

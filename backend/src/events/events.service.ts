@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject, NotFoundException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -241,6 +241,51 @@ export class EventsService {
     }
 
     return jobs.length;
+  }
+
+  /**
+   * Get a list of all unique ingested categories.
+   */
+  async getCategories() {
+    const records = await this.prisma.event.findMany({
+      select: { category: true },
+      distinct: ['category'],
+      where: {
+        category: {
+          not: '',
+        },
+      },
+      orderBy: { category: 'asc' },
+    });
+
+    return records.map((r) => r.category);
+  }
+
+  /**
+   * Manually forward an event to a specific bot for generation.
+   */
+  async forwardEvent(eventId: string, botId: string) {
+    const bot = await this.prisma.bot.findUnique({
+      where: { id: botId, isActive: true },
+    });
+    if (!bot) {
+      throw new NotFoundException('Bot not found or is inactive');
+    }
+
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+    });
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    await this.eventQueue.add(
+      'generate-tweets-batch',
+      { botId, eventIds: [eventId] },
+      DEFAULT_JOB_OPTS[QUEUES.EVENT_PROCESSING],
+    );
+
+    return { message: 'Event successfully queued for bot generation' };
   }
 
   /**
