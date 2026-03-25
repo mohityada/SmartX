@@ -6,9 +6,13 @@ import { XApiClientService } from './x-api-client.service';
 import { TokenCryptoService } from './token-crypto.service';
 import { PostingRateLimiter } from './posting-rate-limiter.service';
 import { QUEUES } from '../scheduler/queue.constants';
+import { EventsModule } from '../events/events.module';
 
 @Module({
-  imports: [BullModule.registerQueue({ name: QUEUES.TWEET_POSTING })],
+  imports: [
+    BullModule.registerQueue({ name: QUEUES.TWEET_POSTING }),
+    EventsModule,
+  ],
   providers: [
     PostingService,
     PostingProcessor,

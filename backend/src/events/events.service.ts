@@ -365,4 +365,71 @@ export class EventsService {
       adapters: this.adapters.map((a) => a.source),
     };
   }
+
+  // ── Feed cleanup ────────────────────────────────────────────────────
+
+  /** Terminal tweet statuses — no more processing will happen. */
+  private static readonly TERMINAL_STATUSES = ['posted', 'failed'];
+
+  /**
+   * Daily cron (3 AM UTC): delete ingested events older than 24 hours
+   * whose tweets have all reached a terminal state (posted / failed).
+   * Events with no tweets are also deleted (they were never matched to a bot).
+   */
+  @Cron('0 3 * * *')
+  async cleanupOldEvents() {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Find old events that still have non-terminal tweets — we must keep those.
+    const eventsWithPendingTweets = await this.prisma.tweet.findMany({
+      where: {
+        event: { ingestedAt: { lt: cutoff } },
+        status: { notIn: EventsService.TERMINAL_STATUSES },
+      },
+      select: { eventId: true },
+      distinct: ['eventId'],
+    });
+
+    const excludeIds = eventsWithPendingTweets
+      .map((t) => t.eventId)
+      .filter((id): id is string => id !== null);
+
+    const result = await this.prisma.event.deleteMany({
+      where: {
+        ingestedAt: { lt: cutoff },
+        ...(excludeIds.length ? { id: { notIn: excludeIds } } : {}),
+      },
+    });
+
+    if (result.count > 0) {
+      this.logger.log(`Cleaned up ${result.count} old events (older than 24 h)`);
+    }
+  }
+
+  /**
+   * Delete an event if all of its tweets are in a terminal state.
+   * Called by PostingService after a tweet is successfully posted.
+   * Safe to call with a null eventId — it simply returns.
+   */
+  async deleteEventIfFullyProcessed(eventId: string | null): Promise<void> {
+    if (!eventId) return;
+
+    const pendingTweets = await this.prisma.tweet.count({
+      where: {
+        eventId,
+        status: { notIn: EventsService.TERMINAL_STATUSES },
+      },
+    });
+
+    if (pendingTweets > 0) return;
+
+    await this.prisma.event.delete({ where: { id: eventId } }).catch((err) => {
+      // Silently ignore if event was already deleted (race between cron & post-tweet)
+      this.logger.debug(
+        `Could not delete event ${eventId}: ${err instanceof Error ? err.message : err}`,
+      );
+    });
+
+    this.logger.log(`Deleted fully-processed event ${eventId}`);
+  }
 }

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma';
+import { EventsService } from '../events/events.service';
 import { XApiClientService } from './x-api-client.service';
 import { PostingRateLimiter } from './posting-rate-limiter.service';
 import {
@@ -14,6 +15,7 @@ export class PostingService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly eventsService: EventsService,
     private readonly xApiClient: XApiClientService,
     private readonly rateLimiter: PostingRateLimiter,
   ) {}
@@ -126,6 +128,9 @@ export class PostingService {
       this.logger.log(
         `Posted tweet ${tweetId} as X tweet ${result.xTweetId} via @${xAccount.xUsername}`,
       );
+
+      // Clean up the source event if all its tweets are in a terminal state
+      await this.eventsService.deleteEventIfFullyProcessed(tweet.eventId);
     } catch (error) {
       const classified = classifyTwitterError(error);
 

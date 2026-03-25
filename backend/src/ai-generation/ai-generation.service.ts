@@ -167,7 +167,7 @@ export class AiGenerationService {
       data: {
         botId,
         eventId,
-        content: content.slice(0, 280),
+        content: content.slice(0, 350),
         status: 'draft',
       },
     });
@@ -288,9 +288,9 @@ export class AiGenerationService {
     const client = this.getClient();
     const model = this.configService.get<string>('claude.model')!;
     const temperature = this.configService.get<number>('claude.temperature')!;
-    // Scale max_tokens: ~80 tokens per tweet
+    // Scale max_tokens: ~120 tokens per tweet (supports up to 350 chars)
     const maxTokens = Math.min(
-      eligibleEvents.length * 80 + 100,
+      eligibleEvents.length * 120 + 100,
       this.configService.get<number>('claude.maxTokens')! * 2,
     );
 
@@ -330,7 +330,7 @@ export class AiGenerationService {
         continue;
       }
 
-      const content = (filterResult.sanitized ?? cleaned).slice(0, 280);
+      const content = (filterResult.sanitized ?? cleaned).slice(0, 350);
 
       // Similarity check
       if (this.isTooSimilar(content, recentContents)) {
