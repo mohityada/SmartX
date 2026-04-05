@@ -111,6 +111,27 @@ export class BotsController {
     return this.botsService.stop(id, userId);
   }
 
+  @Post(':id/subscribe-all')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Subscribe a bot to all available event sources (auto-discover and subscribe)',
+  })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
+  @ApiResponse({
+    status: 200,
+    description: 'Number of new subscriptions created',
+  })
+  @ApiResponse({ status: 404, description: 'Bot not found' })
+  async subscribeAll(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    await this.botsService.findOne(id, userId); // ownership check
+    const count = await this.botsService.subscribeToAllSources(id);
+    return { subscribed: count };
+  }
+
   @Get(':id/activity')
   @ApiOperation({ summary: 'Get activity log for a bot' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })

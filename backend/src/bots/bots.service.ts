@@ -3,13 +3,20 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma';
 import { CreateBotDto, UpdateBotDto } from './dto';
+import { EventsService } from '../events/events.service';
 
 @Injectable()
 export class BotsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(BotsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventsService: EventsService,
+  ) {}
 
   async create(userId: string, dto: CreateBotDto) {
     const { topics, eventSubscriptions, xAccountId, ...botData } = dto;
@@ -35,6 +42,16 @@ export class BotsService {
     });
 
     await this.logActivity(bot.id, 'bot_created');
+
+    // Auto-subscribe to all available sources if no explicit subscriptions provided
+    if (!eventSubscriptions?.length) {
+      await this.subscribeToAllSources(bot.id);
+      // Re-fetch to include the auto-created subscriptions
+      return this.prisma.bot.findUniqueOrThrow({
+        where: { id: bot.id },
+        include: { topics: true, eventSubscriptions: true },
+      });
+    }
 
     return bot;
   }
@@ -123,6 +140,53 @@ export class BotsService {
     await this.findOne(id, userId);
     await this.prisma.bot.delete({ where: { id } });
     return { deleted: true };
+  }
+
+  /**
+   * Subscribe a bot to all available event source+category pairs.
+   * Skips pairs that are already subscribed.
+   */
+  async subscribeToAllSources(botId: string): Promise<number> {
+    const available = await this.eventsService.getAvailableSources();
+
+    // Get existing subscriptions for this bot
+    const existing = await this.prisma.botEventSubscription.findMany({
+      where: { botId },
+      select: { source: true, category: true },
+    });
+    const existingKeys = new Set(
+      existing.map((e) => `${e.source}:${e.category}`),
+    );
+
+    // Filter out already-subscribed pairs
+    const toCreate = available.filter(
+      (pair) => !existingKeys.has(`${pair.source}:${pair.category}`),
+    );
+
+    if (!toCreate.length) {
+      this.logger.debug(`Bot ${botId}: already subscribed to all sources`);
+      return 0;
+    }
+
+    await this.prisma.botEventSubscription.createMany({
+      data: toCreate.map((pair) => ({
+        botId,
+        source: pair.source,
+        category: pair.category,
+      })),
+      skipDuplicates: true,
+    });
+
+    this.logger.log(
+      `Bot ${botId}: auto-subscribed to ${toCreate.length} source+category pairs`,
+    );
+
+    await this.logActivity(botId, 'auto_subscribed', {
+      count: toCreate.length,
+      pairs: toCreate,
+    });
+
+    return toCreate.length;
   }
 
   async start(id: string, userId: string) {

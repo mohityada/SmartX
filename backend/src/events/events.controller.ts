@@ -54,6 +54,18 @@ export class EventsController {
     return this.eventsService.getCategories();
   }
 
+  @Get('sources')
+  @ApiOperation({
+    summary: 'Get all available event source+category pairs for subscription',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of source+category pairs',
+  })
+  async getAvailableSources() {
+    return this.eventsService.getAvailableSources();
+  }
+
   @Post(':id/forward')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Forward an event to a specific bot' })

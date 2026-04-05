@@ -262,6 +262,51 @@ export class EventsService {
   }
 
   /**
+   * Return all available source+category pairs for subscription.
+   * Combines static adapter knowledge with dynamically discovered pairs from the DB.
+   */
+  async getAvailableSources(): Promise<
+    Array<{ source: string; category: string }>
+  > {
+    // 1. Static: known adapter sources (always available even if no events ingested yet)
+    const staticPairs: Array<{ source: string; category: string }> = [
+      { source: 'crypto', category: 'trending' },
+      { source: 'news', category: 'headline' },
+      { source: 'sports', category: 'cricket_live' },
+      { source: 'sports', category: 'cricket_news' },
+      { source: 'sports', category: 'ipl' },
+      { source: 'trending', category: 'google_trends' },
+      { source: 'trending', category: 'world_events' },
+      // RSS categories are dynamic, handled below
+    ];
+
+    // 2. Dynamic: unique source+category pairs from already-ingested events
+    const dbPairs = await this.prisma.event.findMany({
+      select: { source: true, category: true },
+      distinct: ['source', 'category'],
+      where: {
+        source: { not: '' },
+        category: { not: '' },
+      },
+      orderBy: [{ source: 'asc' }, { category: 'asc' }],
+    });
+
+    // 3. Merge and deduplicate
+    const seen = new Set<string>();
+    const result: Array<{ source: string; category: string }> = [];
+
+    for (const pair of [...staticPairs, ...dbPairs]) {
+      const key = `${pair.source}:${pair.category}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push({ source: pair.source, category: pair.category });
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * Manually forward an event to a specific bot for generation.
    */
   async forwardEvent(eventId: string, botId: string) {

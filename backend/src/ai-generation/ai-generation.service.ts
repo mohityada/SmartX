@@ -8,6 +8,7 @@ import {
   BatchEvent,
 } from './prompts/tweet-prompt.builder';
 import { ContentFilterService } from './content-filter.service';
+import { SchedulerService } from '../scheduler/scheduler.service';
 
 const MAX_GENERATION_RETRIES = 3;
 const RECENT_TWEETS_LOOKBACK = 50;
@@ -31,6 +32,7 @@ export class AiGenerationService {
     private readonly configService: ConfigService,
     private readonly promptBuilder: TweetPromptBuilder,
     private readonly contentFilter: ContentFilterService,
+    private readonly scheduler: SchedulerService,
   ) {}
 
   private getClient(): Anthropic {
@@ -163,12 +165,13 @@ export class AiGenerationService {
       );
     }
 
+    const tweetStatus = bot.autoApprove ? 'approved' : 'draft';
     const tweet = await this.prisma.tweet.create({
       data: {
         botId,
         eventId,
         content: content.slice(0, 350),
-        status: 'draft',
+        status: tweetStatus,
       },
     });
 
@@ -338,12 +341,13 @@ export class AiGenerationService {
         continue;
       }
 
+      const tweetStatus = bot.autoApprove ? 'approved' : 'draft';
       const tweet = await this.prisma.tweet.create({
         data: {
           botId,
           eventId: event.id,
           content,
-          status: 'draft',
+          status: tweetStatus,
         },
       });
 
@@ -362,6 +366,21 @@ export class AiGenerationService {
     this.logger.log(
       `Batch: generated ${createdIds.length}/${eligibleEvents.length} tweets for bot ${botId} in 1 API call`,
     );
+
+    // If auto-approve is on and we created tweets, trigger immediate scheduling
+    if (bot.autoApprove && createdIds.length > 0) {
+      try {
+        const scheduled = await this.scheduler.autoScheduleForBot(botId);
+        this.logger.log(
+          `Auto-scheduled ${scheduled} tweets for bot ${botId} after batch generation`,
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Failed to auto-schedule for bot ${botId}: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+
     return createdIds;
   }
 

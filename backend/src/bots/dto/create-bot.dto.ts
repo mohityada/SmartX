@@ -2,6 +2,7 @@ import {
   IsString,
   IsOptional,
   IsInt,
+  IsBoolean,
   Min,
   Max,
   MaxLength,
@@ -114,6 +115,16 @@ export class CreateBotDto {
   @MaxLength(100, { each: true })
   @ArrayMaxSize(20)
   topics?: string[];
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      'Whether AI-generated tweets are auto-approved for scheduling (default: true). Set to false for manual review workflow.',
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  autoApprove?: boolean;
 
   @ApiPropertyOptional({
     description: 'Event sources the bot subscribes to (data sources)',
